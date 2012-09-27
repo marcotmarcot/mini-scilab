@@ -75,6 +75,8 @@ attribution = liftM2 CAttr (call_expr RVar RVI) $ token TAttr >> expr
 data Expr
   = EVar T.Text
       | EVec [Expr]
+      | EVecFromTo Expr Expr
+      | EVecFromToStep Expr Expr Expr
       | ECall T.Text Expr
       | EAdd Expr Expr
       | ESub Expr Expr
@@ -103,6 +105,14 @@ expr_table
     [bin TPow EPow AssocRight],
     [binl TMul EMul, binl TDiv EDiv],
     [binl TAdd EAdd, binl TSub ESub],
+    [Infix
+      (token TColon
+        >> return
+          (\left right
+            -> case right of
+              EVecFromTo e1 e2 -> EVecFromToStep left e1 e2
+              _ -> EVecFromTo left right))
+      AssocRight],
     [bin TEq EEq AssocNone,
       bin TDiff EDiff AssocNone,
       bin TGT EGT AssocNone,

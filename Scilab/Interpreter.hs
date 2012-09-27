@@ -110,6 +110,17 @@ eval (ECall var ix)
       $ case vec of
       VecNumber v_ -> filterVec ix_ v_
       VecBool v_ -> filterVec ix_ v_
+eval (EVecFromTo from to)
+  = do
+    (Atom (AtomNumber nfrom)) <- eval from
+    (Atom (AtomNumber nto)) <- eval to
+    return $ toVec $ V.fromList [nfrom .. nto]
+eval (EVecFromToStep from step to)
+  = do
+    (Atom (AtomNumber nfrom)) <- eval from
+    (Atom (AtomNumber nstep)) <- eval step
+    (Atom (AtomNumber nto)) <- eval to
+    return $ toVec $ V.fromList [nfrom, (nfrom + nstep) .. nto]
 
 filterVec :: Valuable a => Value -> V.Vector a -> Value
 filterVec ix_ v_

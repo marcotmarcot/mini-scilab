@@ -27,6 +27,7 @@ test-suite tests
   hs-source-dirs: tests
   build-depends:
    base == 4.5.*,
+   vector == 0.9.*,
    HUnit == 1.2.*,
    scilab
   extensions: OverloadedStrings
