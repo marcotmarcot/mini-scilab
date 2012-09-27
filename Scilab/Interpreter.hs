@@ -111,6 +111,7 @@ eval (ELTE e1 e2) = opD (<=) e1 e2
 eval (EAnd e1 e2) = op (&&) e1 e2
 eval (EOr e1 e2) = op (||) e1 e2
 eval (ENot e) = dof not <$> eval e
+eval (ENegate e) = dofD negate <$> eval e
 eval (ENumber n) = return $ toAtom n
 eval (EStr t) = return $ Atom $ VStr t
 eval (ECall "input" _) = head <$> gets snd <* modify (second tail)

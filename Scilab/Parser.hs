@@ -111,6 +111,7 @@ data Expr
       | EAnd Expr Expr
       | EOr Expr Expr
       | ENot Expr
+      | ENegate Expr
       | ENumber Double
       | EStr T.Text
     deriving (Show, Eq)
@@ -122,6 +123,7 @@ expr_table :: OperatorTable [Token] () Identity Expr
 expr_table
   = [
     [bin TPow EPow AssocRight],
+    [Prefix $ token TSub >> return ENegate],
     [binl TMul EMul, binl TDiv EDiv],
     [binl TAdd EAdd, binl TSub ESub],
     [Infix
@@ -165,9 +167,7 @@ literal_expr
     <|> literal_str
 
 literal_num :: Parser Expr
-literal_num
-  = (token TSub >> ENumber <$> negate <$> number)
-    <|> (ENumber <$> number)
+literal_num = ENumber <$> number
 
 literal_str :: Parser Expr
 literal_str

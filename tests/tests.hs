@@ -124,4 +124,9 @@ execution
             <> "  end\n"
             <> "  v = [v n]\n"
             <>  "end\n"
-            <> "disp(v)")]
+            <> "disp(v)"),
+      [Atom (AtomNumber (-1.0))] ~=? interpret [] "a = 1; disp(-a)",
+      [Vec (VecNumber (V.fromList [-1.0,-1.0,-1.0]))]
+        ~=? interpret [] "disp(-1^[1 2 3])",
+      [Vec (VecNumber (V.fromList [-1.0,1.0,-1.0]))]
+        ~=? interpret [] "disp((-1)^[1 2 3])"]
