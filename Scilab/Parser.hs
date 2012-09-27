@@ -39,6 +39,7 @@ import Scilab.Lexer
 data Command
   = CIf Expr [Command] [Command]
     | CAttr Reference Expr
+    | CExpr Expr
     deriving (Show, Eq)
 
 parser :: T.Text -> [Command]
@@ -56,6 +57,7 @@ command :: Parser Command
 command
   = ifelse
     <|> try attribution
+    <|> CExpr <$> expr
 
 ifelse :: Parser Command
 ifelse
