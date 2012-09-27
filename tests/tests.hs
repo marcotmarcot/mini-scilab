@@ -19,4 +19,7 @@ tests :: Test
 tests
   = TestList
     [[CAttr (RVar "a") (ENumber 1.0)] ~=? parser "a = 1",
-      [CAttr (RVI "a" (ENumber 1.0)) (ENumber 1.0)] ~=? parser "a(1) = 1"]
+      [CAttr (RVI "a" (ENumber 1.0)) (ENumber 1.0)] ~=? parser "a(1) = 1",
+      [CAttr (RVar "a") (EAdd (EAdd (ENumber 1.0) (ENumber 1.0)) (ENumber 1.0))]
+        ~=? parser "a = 1 + 1 + 1"]
+

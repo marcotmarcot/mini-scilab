@@ -7,6 +7,9 @@ import Control.Monad (liftM2)
 -- text
 import qualified Data.Text as T
 
+-- transformers
+import Data.Functor.Identity (Identity)
+
 -- parsec
 import
   Text.Parsec
@@ -21,6 +24,12 @@ import
     parse,
     many1,
     sepEndBy)
+import
+  Text.Parsec.Expr
+  (buildExpressionParser,
+    OperatorTable,
+    Assoc (AssocNone, AssocLeft, AssocRight),
+    Operator (Infix, Prefix))
 
 -- scilab
 import Scilab.Lexer
@@ -69,41 +78,38 @@ data Expr
     deriving (Show, Eq)
 
 expr :: Parser Expr
-expr = binOp and_expr [(TOr, EOr)]
+expr = buildExpressionParser expr_table noop_expr
 
-and_expr :: Parser Expr
-and_expr = binOp not_expr [(TAnd, EAnd)]
+expr_table :: OperatorTable [Token] () Identity Expr
+expr_table
+  = [
+    [bin TPow EPow AssocRight],
+    [binl TMul EMul, binl TDiv EDiv],
+    [binl TAdd EAdd, binl TSub ESub],
+    [bin TEq EEq AssocNone,
+      bin TDiff EDiff AssocNone,
+      bin TGT EGT AssocNone,
+      bin TGTE EGTE AssocNone,
+      bin TLT ELT AssocNone,
+      bin TLTE ELTE AssocNone],
+    [Prefix $ token TNot >> return ENot],
+    [binl TAnd EAnd],
+    [binl TOr EOr]]
 
-not_expr :: Parser Expr
-not_expr
-  = (token TNot >> ENot <$> cmp_expr)
-    <|> cmp_expr
+binl :: Token -> (Expr -> Expr -> Expr) -> Operator [Token] () Identity Expr
+binl tk cons = bin tk cons AssocLeft
 
-cmp_expr :: Parser Expr
-cmp_expr
-  = binOp
-    add_expr
-    [(TEq, EEq),
-      (TDiff, EDiff),
-      (TGT, EGT),
-      (TGTE, EGTE),
-      (TLT, ELT),
-      (TLTE, ELTE)]
-
-add_expr :: Parser Expr
-add_expr = binOp mul_expr [(TAdd, EAdd), (TSub, ESub)]
-
-mul_expr :: Parser Expr
-mul_expr = binOp pow_expr [(TMul, EMul), (TDiv, EDiv)]
-
-pow_expr :: Parser Expr
-pow_expr = binOp noop_expr [(TPow, EPow)]
+bin
+  :: Token
+    -> (Expr -> Expr -> Expr)
+    -> Assoc
+    -> Operator [Token] () Identity Expr
+bin tk cons = Infix $ token tk >> return cons
 
 noop_expr :: Parser Expr
 noop_expr
   = literal_expr
     <|> vec_expr
-    <|> paren_expr
     <|> call_expr EVar ECall
 
 literal_expr :: Parser Expr
@@ -130,19 +136,6 @@ call_expr cvar ccall = try (liftM2 ccall iden paren_expr) <|> cvar <$> iden
 
 paren_expr :: Parser Expr
 paren_expr = token TOP >> expr <* token TCP
-
-binOp :: Parser Expr -> [(Token, Expr -> Expr -> Expr)] -> Parser Expr
-binOp next rules
-  = try
-      (do
-        e1 <- next
-        cons <- foldr1 (<|>) $ map rule rules
-        e2 <- binOp next rules
-        return $ cons e1 e2)
-    <|> next
-
-rule :: (Token, Expr -> Expr -> Expr) -> Parser (Expr -> Expr ->  Expr)
-rule (tk, cons) = token tk >> return cons
 
 iden :: Parser T.Text
 iden
