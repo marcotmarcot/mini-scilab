@@ -1,5 +1,6 @@
 -- base
 import System.Exit (exitSuccess, exitFailure)
+import Data.Monoid ((<>))
 
 -- vector
 import qualified Data.Vector as V
@@ -54,4 +55,15 @@ execution
       [Vec (VecNumber (V.fromList []))]
         ~=? interpret [] "disp(3 : 1)",
       [Vec (VecNumber (V.fromList [3.0,2.0,1.0]))]
-        ~=? interpret [] "disp(3 : -1 : 1)"]
+        ~=? interpret [] "disp(3 : -1 : 1)",
+      [Atom (AtomNumber 450.0)]
+        ~=? interpret
+          (map toAtom [11 :: Double, 29, 46, 47, 57, 24, 50, 92, 10, 84])
+          ("total = 0\n"
+            <> "i = 1\n"
+            <> "while i <= 10 do\n"
+            <> "  v = input(\"\")\n"
+            <> "  total = total + v\n"
+            <> "  i = i + 1\n"
+            <>  "end\n"
+            <> "disp(total)")]

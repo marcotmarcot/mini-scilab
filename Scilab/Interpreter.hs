@@ -68,6 +68,10 @@ exec (CAttr (RVI var ix) expr)
               <$> eval expr
     modify $ first $ const $ M.insert var (Vec new) vars
 exec (CExpr expr) = void $ eval expr
+exec c@(CWhile expr body)
+  = do
+    cond <- fromAtomValue <$> eval expr
+    if cond then execs body >> exec c else return ()
 
 eval :: Expr -> Scilab Value
 eval (EVar var) = (M.! var) <$> gets fst

@@ -40,6 +40,7 @@ data Command
   = CIf Expr [Command] [Command]
     | CAttr Reference Expr
     | CExpr Expr
+    | CWhile Expr [Command]
     deriving (Show, Eq)
 
 parser :: T.Text -> [Command]
@@ -56,6 +57,7 @@ commands = many (token TNlSc) >> sepEndBy command (many1 $ token TNlSc)
 command :: Parser Command
 command
   = ifelse
+    <|> while
     <|> try attribution
     <|> CExpr <$> expr
 
@@ -66,6 +68,13 @@ ifelse
     (token TIf >> expr)
     (optional (token TThenDo) >> commands)
     (option [] (token TElse >> commands) <* token TEnd)
+
+while :: Parser Command
+while
+  = liftM2
+    CWhile
+    (token TWhile >> expr)
+    (optional (token TThenDo) >> commands <* token TEnd)
 
 data Reference = RVar T.Text | RVI T.Text Expr deriving (Show, Eq)
 
