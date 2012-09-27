@@ -77,13 +77,11 @@ eval :: Expr -> Scilab Value
 eval (EVar var) = (M.! var) <$> gets fst
 eval (EVec exprs)
   = do
-    exprs_ <- V.mapM eval (V.fromList exprs)
+    exprs_ <- map valueToVec <$> mapM eval exprs
     return
-      $ if V.all isBool exprs_
-        then Vec $ VecBool $ V.map fromAtomValue exprs_
-        else if V.all isNumber exprs_
-          then Vec $ VecNumber $ V.map fromAtomValue exprs_
-          else error "Inconsistent vector!"
+      $ if all isVecBool exprs_
+        then Vec $ VecBool $ V.concat $ map fromVecValue exprs_
+        else Vec $ VecNumber $ V.concat $ map fromVecValue exprs_
 eval (EAdd e1 e2) = opD (+) e1 e2
 eval (ESub e1 e2) = opD (-) e1 e2
 eval (EMul e1 e2) = opD (*) e1 e2
@@ -197,10 +195,11 @@ dof :: (Valuable a, Valuable b) => (a -> b) -> Value -> Value
 dof f (Vec v) = toVec $ V.map f $ fromVec v
 dof f (Atom a) = toAtom $ f $ fromAtom a
 
-isNumber :: Value -> Bool
-isNumber (Atom (AtomNumber _)) = True
-isNumber _ = False
+isVecBool :: Value -> Bool
+isVecBool (Vec (VecBool _)) = True
+isVecBool _ = False
 
-isBool :: Value -> Bool
-isBool (Atom (AtomBool _)) = True
-isBool _ = False
+valueToVec :: Value -> Value
+valueToVec (Atom (AtomNumber n)) = Vec $ VecNumber $ V.singleton n
+valueToVec (Atom (AtomBool b)) = Vec $ VecBool $ V.singleton b
+valueToVec v = v

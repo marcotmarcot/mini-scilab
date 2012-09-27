@@ -66,4 +66,17 @@ execution
             <> "  total = total + v\n"
             <> "  i = i + 1\n"
             <>  "end\n"
-            <> "disp(total)")]
+            <> "disp(total)"),
+      [Vec
+          (VecNumber
+            (V.fromList [5.5,14.5,23.0,23.5,28.5,12.0,25.0,46.0,5.0,42.0]))]
+        ~=? interpret
+          (map toAtom [11 :: Double, 29, 46, 47, 57, 24, 50, 92, 10, 84])
+          ("v = []\n"
+            <> "i = 1\n"
+            <> "while i <= 10 do\n"
+            <> "  n = input(\"\")\n"
+            <> "  v = [v n]\n"
+            <> "  i = i + 1\n"
+            <>  "end\n"
+            <> "disp(v / 2)")]
