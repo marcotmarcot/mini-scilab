@@ -2,7 +2,7 @@ module Scilab.Parser (parser, Command (..), Reference (..), Expr (..)) where
 
 -- base
 import Control.Applicative ((<$>), (<*))
-import Control.Monad (liftM2)
+import Control.Monad (liftM2, liftM3)
 
 -- text
 import qualified Data.Text as T
@@ -23,7 +23,9 @@ import
     eof,
     parse,
     many1,
-    sepEndBy)
+    sepEndBy,
+    optional,
+    option)
 import
   Text.Parsec.Expr
   (buildExpressionParser,
@@ -34,21 +36,34 @@ import
 -- scilab
 import Scilab.Lexer
 
+data Command
+  = CIf Expr [Command] [Command]
+    | CAttr Reference Expr
+    deriving (Show, Eq)
+
 parser :: T.Text -> [Command]
 parser t = either (error . show) id $ lexer t >>= doParser
 
 doParser :: [Token] -> Either ParseError [Command]
-doParser = parse (sepEndBy command (many1 $ token TNlSc) <* eof) "parser"
+doParser = parse (commands <* eof) "parser"
 
 type Parser = Parsec [Token] ()
 
+commands :: Parser [Command]
+commands = many (token TNlSc) >> sepEndBy command (many1 $ token TNlSc)
+
 command :: Parser Command
 command
-  = try attribution
+  = ifelse
+    <|> try attribution
 
-data Command
-  = CAttr Reference Expr
-    deriving (Show, Eq)
+ifelse :: Parser Command
+ifelse
+  = liftM3
+    CIf
+    (token TIf >> expr)
+    (optional (token TThenDo) >> commands)
+    (option [] (token TElse >> commands) <* token TEnd)
 
 data Reference = RVar T.Text | RVI T.Text Expr deriving (Show, Eq)
 

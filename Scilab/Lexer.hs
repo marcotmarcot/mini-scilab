@@ -29,11 +29,10 @@ import Text.Parsec.Text (Parser)
 
 data Token
   = TIf
-      | TThen
+      | TThenDo
       | TElse
       | TEnd
       | TWhile
-      | TDo
       | TFor
       | TEq
       | TDiff
@@ -75,11 +74,11 @@ token :: Parser Token
 token
   = whites
     >> (try (string "if" >> return TIf)
-      <|> try (string "then" >> return TThen)
+      <|> try (string "then" >> return TThenDo)
+      <|> try (string "do" >> return TThenDo)
       <|> try (string "else" >> return TElse)
       <|> try (string "end" >> return TEnd)
       <|> try (string "while" >> return TWhile)
-      <|> try (string "do" >> return TDo)
       <|> try (string "for" >> return TFor)
       <|> try (string "==" >> return TEq)
       <|> try (string "<>" >> return TDiff)
