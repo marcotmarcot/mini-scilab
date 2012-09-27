@@ -88,7 +88,7 @@ token
       <|> (char '(' >> return TOP)
       <|> (char ')' >> return TCP)
       <|> (char '>' >> return TGT)
-      <|> (char '<' >> return TGT)
+      <|> (char '<' >> return TLT)
       <|> (char ':' >> return TColon)
       <|> (char ',' >> return TComma)
       <|> (char '[' >> return TOSB)
