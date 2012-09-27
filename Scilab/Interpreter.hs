@@ -44,7 +44,7 @@ exec (CIf expr then_ else_)
   = do
     cond <- fromAtomValue <$> eval expr
     if cond then execs then_ else execs else_
-exec (CAttr (RVar var) e) = eval e >>= modify . first . M.insert var
+exec (CAttr (RVar var) e) = eval e >>= attr var
 exec (CAttr (RVI var ix) expr)
   = do
     ix_ <- (fromEnum :: Double -> Int) <$> fromAtomValue <$> eval ix
@@ -72,6 +72,21 @@ exec c@(CWhile expr body)
   = do
     cond <- fromAtomValue <$> eval expr
     if cond then execs body >> exec c else return ()
+exec (CFor var expr body)
+  = eval expr >>= for var body
+
+attr :: T.Text -> Value -> Scilab ()
+attr var = modify . first . M.insert var
+
+for :: T.Text -> [Command] -> Value -> Scilab ()
+for var body (Vec (VecNumber ns))
+  = V.mapM_ (forLoop var body . Atom . AtomNumber) ns
+for var body (Vec (VecBool bs))
+  = V.mapM_ (forLoop var body . Atom . AtomBool) bs
+for _ _ _ = error "for _"
+
+forLoop :: T.Text -> [Command] -> Value -> Scilab ()
+forLoop var body cur = attr var cur >> execs body
 
 eval :: Expr -> Scilab Value
 eval (EVar var) = (M.! var) <$> gets fst

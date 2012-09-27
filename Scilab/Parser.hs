@@ -41,6 +41,7 @@ data Command
     | CAttr Reference Expr
     | CExpr Expr
     | CWhile Expr [Command]
+    | CFor T.Text Expr [Command]
     deriving (Show, Eq)
 
 parser :: T.Text -> [Command]
@@ -58,6 +59,7 @@ command :: Parser Command
 command
   = ifelse
     <|> while
+    <|> for
     <|> try attribution
     <|> CExpr <$> expr
 
@@ -74,6 +76,14 @@ while
   = liftM2
     CWhile
     (token TWhile >> expr)
+    (optional (token TThenDo) >> commands <* token TEnd)
+
+for :: Parser Command
+for
+  = liftM3
+    CFor
+    (token TFor >> iden)
+    (token TAttr >> expr)
     (optional (token TThenDo) >> commands <* token TEnd)
 
 data Reference = RVar T.Text | RVI T.Text Expr deriving (Show, Eq)
