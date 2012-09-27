@@ -119,6 +119,7 @@ eval (ECall "disp" e)
     e_ <- eval e
     tell [e_]
     return e_
+eval (ECall "sqrt" e) = dofD sqrt <$> eval e
 eval (ECall var ix)
   = do
     (Vec vec) <- (M.! var) <$> gets fst
@@ -205,6 +206,9 @@ doop f (Vec v1) (Vec v2) = toVec $ V.zipWith f (fromVec v1) (fromVec v2)
 doop f (Vec v) (Atom a) = toVec $ V.map (`f` fromAtom a) (fromVec v)
 doop f (Atom a) (Vec v) = toVec $ V.map (f $ fromAtom a) (fromVec v)
 doop f (Atom a1) (Atom a2) = toAtom $ fromAtom a1 `f` fromAtom a2
+
+dofD :: Valuable b => (Double -> b) -> Value -> Value
+dofD = dof
 
 dof :: (Valuable a, Valuable b) => (a -> b) -> Value -> Value
 dof f (Vec v) = toVec $ V.map f $ fromVec v
