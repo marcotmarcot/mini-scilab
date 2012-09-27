@@ -39,7 +39,8 @@ parse
       [CAttr
           (RVar "a")
           (EVecFromToStep (ENumber 1.0) (ENumber 5.0) (ENumber 10.0))]
-        ~=? parser "a = 1 : 5 : 10"]
+        ~=? parser "a = 1 : 5 : 10",
+      [CAttr (RVar "a") (ENumber 1.0)] ~=? parser "a = (1)"]
 
 execution :: Test
 execution

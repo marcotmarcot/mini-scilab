@@ -135,7 +135,8 @@ bin tk cons = Infix $ token tk >> return cons
 
 noop_expr :: Parser Expr
 noop_expr
-  = literal_expr
+  = paren_expr
+    <|> literal_expr
     <|> vec_expr
     <|> call_expr EVar ECall
 
