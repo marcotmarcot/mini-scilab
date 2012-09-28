@@ -56,14 +56,14 @@ exec (CAttr (RVI var ix) expr)
             -> VecNumber
               <$> (v_ V.//)
               <$> (: [])
-              <$> (,) ix_
+              <$> (,) (pred ix_)
               <$> fromAtomValue
               <$> eval expr
           VecBool v_
             -> VecBool
               <$> (v_ V.//)
               <$> (: [])
-              <$> (,) ix_
+              <$> (,) (pred ix_)
               <$> fromAtomValue
               <$> eval expr
     modify $ first $ const $ M.insert var (Vec new) vars
@@ -145,9 +145,9 @@ eval (EVecFromToStep from step to)
 filterVec :: Valuable a => Value -> V.Vector a -> Value
 filterVec ix_ v_
   = case ix_ of
-    Vec (VecNumber ns) -> toVec $ V.map ((v_ V.!) . fromEnum) ns
+    Vec (VecNumber ns) -> toVec $ V.map ((v_ V.!) . pred . fromEnum) ns
     Vec (VecBool bs) -> toVec $ V.map fst $ V.filter snd $ V.zip v_ bs
-    Atom n -> toAtom $ v_ V.! (fromEnum :: Double -> Int) (fromAtom n)
+    Atom n -> toAtom $ v_ V.! pred ((fromEnum :: Double -> Int) $ fromAtom n)
 
 opD :: Valuable a => (Double -> Double -> a) -> Expr -> Expr -> Scilab Value
 opD = op

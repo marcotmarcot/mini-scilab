@@ -129,4 +129,6 @@ execution
       [Vec (VecNumber (V.fromList [-1.0,-1.0,-1.0]))]
         ~=? interpret [] "disp(-1^[1 2 3])",
       [Vec (VecNumber (V.fromList [-1.0,1.0,-1.0]))]
-        ~=? interpret [] "disp((-1)^[1 2 3])"]
+        ~=? interpret [] "disp((-1)^[1 2 3])",
+      [Atom (AtomNumber 2.0)]
+        ~=? interpret [] "a = [1]\na(1) = 2\ndisp(a(1))"]
