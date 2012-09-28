@@ -43,7 +43,7 @@ execs = mapM_ exec
 exec :: Command -> Scilab ()
 exec (CIf expr then_ else_) = ifS expr then_ else_
 exec (CAttr (RVar var) e) = eval e >>= attr var
-exec (CAttr (RVI var ix) expr)
+exec (CAttr (RVI var [ix]) expr)
   = do
     ix_ <- pred <$> evalScalar ix
     vars <- getVars
@@ -56,6 +56,7 @@ exec (CAttr (RVI var ix) expr)
         var
         (Number (typeOld && typeNew) $ old V.// [(ix_, V.head new)])
         vars
+exec (CAttr (RVI {}) _) = error "exec (CAttr (RVI {}) _)"
 exec (CExpr expr) = void $ eval expr
 exec c@(CWhile expr body) = ifS expr (body ++ [c]) []
 exec (CFor var expr body) = evalVec expr >>= V.mapM_ (forLoop var body)
@@ -98,16 +99,13 @@ eval (ENegate e) = dofD negate e
 eval (ENumber n) = return $ scalar n
 eval (EStr t) = return $ String $ V.singleton t
 eval (ECall "input" _) = head <$> gets snd <* modify (second tail)
-eval (ECall "disp" e)
-  = do
-    e_ <- eval e
-    tell [e_]
-    return e_
-eval (ECall "sqrt" e) = dofD sqrt e
-eval (ECall "factorial" e) = dofD (product . enumFromTo 1) e
-eval (ECall "sum" e)
+eval (ECall "disp" [e]) = disp e >> return undefined
+eval (ECall "sqrt" [e]) = dofD sqrt e
+eval (ECall "factorial" [e]) = dofD (product . enumFromTo 1) e
+eval (ECall "sum" [e])
   = scalar <$> (V.sum :: V.Vector Double -> Double) <$> evalVec e
-eval (ECall var ix)
+eval (ECall "printf" es) = mapM_ disp es >> return undefined
+eval (ECall var [ix])
   = do
     (Number typeVec v) <- readVar var
     (Number typeIx ix_) <- eval ix
@@ -116,6 +114,7 @@ eval (ECall var ix)
       $ case typeIx of
         False -> V.map ((v V.!) . pred . fromDouble) $ ix_
         True -> V.map fst $ V.filter snd $ V.zip v $ V.map fromDouble ix_
+eval (ECall {}) = error "eval (ECall {})"
 eval (EVecFromTo from to)
   = do
     nfrom <- evalScalarD from
@@ -127,6 +126,12 @@ eval (EVecFromToStep from step to)
     nstep <- evalScalarD step
     nto <- evalScalarD to
     return $ vec $ V.fromList [nfrom, (nfrom + nstep) .. nto]
+
+disp :: Expr -> Scilab ()
+disp e
+  = do
+    e_ <- eval e
+    tell [e_]
 
 evalVec :: Valuable a => Expr -> Scilab (V.Vector a)
 evalVec e = getVec <$> eval e

@@ -25,7 +25,8 @@ import
     many1,
     sepEndBy,
     optional,
-    option)
+    option,
+    sepBy)
 import
   Text.Parsec.Expr
   (buildExpressionParser,
@@ -86,7 +87,7 @@ for
     (token TAttr >> expr)
     (optional (token TThenDo) >> commands <* token TEnd)
 
-data Reference = RVar T.Text | RVI T.Text Expr deriving (Show, Eq)
+data Reference = RVar T.Text | RVI T.Text [Expr] deriving (Show, Eq)
 
 attribution :: Parser Command
 attribution = liftM2 CAttr (call_expr RVar RVI) $ token TAttr >> expr
@@ -96,7 +97,7 @@ data Expr
       | EVec [Expr]
       | EVecFromTo Expr Expr
       | EVecFromToStep Expr Expr Expr
-      | ECall T.Text Expr
+      | ECall T.Text [Expr]
       | EAdd Expr Expr
       | ESub Expr Expr
       | EMul Expr Expr
@@ -178,8 +179,11 @@ literal_str
 vec_expr :: Parser Expr
 vec_expr = token TOSB >> EVec <$> many expr <* token TCSB
 
-call_expr :: (T.Text -> a) -> (T.Text -> Expr -> a) -> Parser a
-call_expr cvar ccall = try (liftM2 ccall iden paren_expr) <|> cvar <$> iden
+call_expr :: (T.Text -> a) -> (T.Text -> [Expr] -> a) -> Parser a
+call_expr cvar ccall = try (liftM2 ccall iden parameters) <|> cvar <$> iden
+
+parameters :: Parser [Expr]
+parameters = token TOP >> sepBy expr (token TComma) <*token TCP
 
 paren_expr :: Parser Expr
 paren_expr = token TOP >> expr <* token TCP

@@ -31,7 +31,7 @@ parse :: Test
 parse
   = TestList
     [[CAttr (RVar "a") (ENumber 1.0)] ~=? parser "a = 1",
-      [CAttr (RVI "a" (ENumber 1.0)) (ENumber 1.0)] ~=? parser "a(1) = 1",
+      [CAttr (RVI "a" [ENumber 1.0]) (ENumber 1.0)] ~=? parser "a(1) = 1",
       [CAttr (RVar "a") (EAdd (EAdd (ENumber 1.0) (ENumber 1.0)) (ENumber 1.0))]
         ~=? parser "a = 1 + 1 + 1",
       [CIf
@@ -131,7 +131,8 @@ execution
       ([], [scalarD 1])
         ~=? interpret [] "for x = 1 do\n  disp(x)\nend",
       ([], [scalarD 1])
-        ~=? interpret [scalarD 1] "a = input(\"\")\r\ndisp(a)"]
+        ~=? interpret [scalarD 1] "a = input(\"\")\r\ndisp(a)",
+      ([], map scalarD [1, 2]) ~=? interpret [] "printf(1, 2)"]
 
 loop :: Test
 loop
