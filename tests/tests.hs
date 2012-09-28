@@ -47,13 +47,13 @@ parse
 execution :: Test
 execution
   = TestList
-    [[scalarD 2]
+    [([], [scalarD 2])
         ~=? interpret [scalarD 2] "a = input(\"\")\ndisp(a)",
-      [vecL [1 .. 4]] ~=? interpret [] "disp(1 : 4)",
-      [vecL [1 ,3 .. 7]] ~=? interpret [] "disp(1 : 2 : 7)",
-      [vecL []] ~=? interpret [] "disp(3 : 1)",
-      [vecL [3, 2, 1]] ~=? interpret [] "disp(3 : -1 : 1)",
-      [scalarD 450]
+      ([], [vecL [1 .. 4]]) ~=? interpret [] "disp(1 : 4)",
+      ([], [vecL [1 ,3 .. 7]]) ~=? interpret [] "disp(1 : 2 : 7)",
+      ([], [vecL []]) ~=? interpret [] "disp(3 : 1)",
+      ([], [vecL [3, 2, 1]]) ~=? interpret [] "disp(3 : -1 : 1)",
+      ([], [scalarD 450])
         ~=? interpret
           (map scalarD [11, 29, 46, 47, 57, 24, 50, 92, 10, 84])
           ("total = 0\n"
@@ -64,7 +64,7 @@ execution
             <> "  i = i + 1\n"
             <>  "end\n"
             <> "disp(total)"),
-      [vecL [5.5, 14.5, 23, 23.5, 28.5, 12, 25, 46, 5, 42]]
+      ([], [vecL [5.5, 14.5, 23, 23.5, 28.5, 12, 25, 46, 5, 42]])
         ~=? interpret
           (map scalarD [11, 29, 46, 47, 57, 24, 50, 92, 10, 84])
           ("v = []\n"
@@ -75,7 +75,7 @@ execution
             <> "  i = i + 1\n"
             <>  "end\n"
             <> "disp(v / 2)"),
-      [vecL [5.5, 14.5, 23, 23.5, 28.5, 12, 25, 46, 5, 42]]
+      ([], [vecL [5.5, 14.5, 23, 23.5, 28.5, 12, 25, 46, 5, 42]])
         ~=? interpret
           (map scalarD [11, 29, 46, 47, 57, 24, 50, 92, 10, 84])
           ("v = []\n"
@@ -84,22 +84,23 @@ execution
             <> "  v = [v n]\n"
             <>  "end\n"
             <> "disp(v / 2)"),
-      [vecL
-          [3.3166247903554,
-            5.385164807134504,
-            6.782329983125268,
-            6.855654600401044,
-            7.54983443527075,
-            4.898979485566356,
-            7.0710678118654755,
-            9.591663046625438,
-            3.1622776601683795,
-            9.16515138991168,
-            -1,
-            -1,
-            -1,
-            -1,
-            -1]]
+      ([],
+          [vecL
+            [3.3166247903554,
+              5.385164807134504,
+              6.782329983125268,
+              6.855654600401044,
+              7.54983443527075,
+              4.898979485566356,
+              7.0710678118654755,
+              9.591663046625438,
+              3.1622776601683795,
+              9.16515138991168,
+              -1,
+              -1,
+              -1,
+              -1,
+              -1]])
         ~=? interpret
           (map scalarD
             [11, 29, 46, 47, 57, 24, 50, 92, 10, 84, -18, -29, -25, -40, -35])
@@ -114,14 +115,18 @@ execution
             <> "  v = [v n]\n"
             <>  "end\n"
             <> "disp(v)"),
-      [scalarD (-1)] ~=? interpret [] "a = 1; disp(-a)",
-      [vecL [-1, -1, -1]] ~=? interpret [] "disp(-1^[1 2 3])",
-      [vecL [-1, 1, -1]] ~=? interpret [] "disp((-1)^[1 2 3])",
-      [scalarD 2] ~=? interpret [] "a = [1]\na(1) = 2\ndisp(a(1))",
-      [scalarD 2] ~=? interpret [] "a = 1\na(1) = 2\ndisp(a(1))",
-      (map scalarD [1, 2])
-        ~=? interpret [] "i = 1\nwhile [i <= 2]\n  disp(i)\n  i = i + 1\nend",
-      [scalarD 1] ~=? interpret [] "for x = 1 do\n  disp(x)\nend"]
+      ([], [scalarD (-1)]) ~=? interpret [] "a = 1; disp(-a)",
+      ([], [vecL [-1, -1, -1]]) ~=? interpret [] "disp(-1^[1 2 3])",
+      ([], [vecL [-1, 1, -1]]) ~=? interpret [] "disp((-1)^[1 2 3])",
+      ([], [scalarD 2])
+        ~=? interpret [] "a = [1]\na(1) = 2\ndisp(a(1))",
+      ([], [scalarD 2]) ~=? interpret [] "a = 1\na(1) = 2\ndisp(a(1))",
+      ([], map scalarD [1, 2])
+        ~=? interpret
+          []
+          "i = 1\nwhile [i <= 2]\n  disp(i)\n  i = i + 1\nend",
+      ([], [scalarD 1])
+        ~=? interpret [] "for x = 1 do\n  disp(x)\nend"]
 
 loop :: Test
 loop
@@ -130,5 +135,6 @@ loop
       result
         <- timeout 100000
           $ evaluate
+          $ fst
           $ interpret [] "i = 1\nwhile i > 0 do\ni = i + 1\nend"
       Nothing @=? result

@@ -18,8 +18,8 @@ import qualified Data.Vector as V
 import qualified Data.Text as T
 
 -- transformers
-import Control.Monad.Trans.Writer (Writer, execWriter)
-import Control.Monad.Trans.State (StateT, evalStateT)
+import Control.Monad.Trans.Writer (Writer, runWriter)
+import Control.Monad.Trans.State (StateT, execStateT)
 
 -- mtl
 import Control.Monad.Writer.Class (tell)
@@ -28,11 +28,11 @@ import Control.Monad.State.Class (gets, modify)
 -- scilab
 import Scilab.Parser
 
-interpret :: [Value] -> T.Text -> [Value]
+interpret :: [Value] -> T.Text -> ([Value], [Value])
 interpret input = run input . parser
 
-run :: [Value] -> [Command] -> [Value]
-run input cs = execWriter $ evalStateT (execs cs) (M.empty, input)
+run :: [Value] -> [Command] -> ([Value], [Value])
+run input cs = runWriter $ snd <$> execStateT (execs cs) (M.empty, input)
 
 execs :: [Command] -> Scilab ()
 execs = mapM_ exec
