@@ -1,11 +1,8 @@
-module
-  Scilab.Interpreter
-  (interpret, Value (..), Valuable (..), vecL, scalarD)
-  where
+module Scilab.Interpreter (interpret) where
 
 -- base
 import Control.Applicative ((<$>), (<*))
-import Control.Monad (void)
+import Control.Monad (void, (>=>))
 import Control.Arrow (first, second)
 
 -- deepseq
@@ -31,10 +28,10 @@ import Control.Monad.State.Class (gets, modify)
 -- scilab
 import Scilab.Parser
 
-interpret :: [Value] -> T.Text -> ([Value], [Value])
+interpret :: [Double] -> T.Text -> ([Double], [Double])
 interpret input = run input . parser
 
-run :: [Value] -> [Command] -> ([Value], [Value])
+run :: [Double] -> [Command] -> ([Double], [Double])
 run input cs = runWriter $ snd <$> execStateT (execs cs) (M.empty, input)
 
 execs :: [Command] -> Scilab ()
@@ -98,7 +95,7 @@ eval (ENot e) = dof not e
 eval (ENegate e) = dofD negate e
 eval (ENumber n) = return $ scalar n
 eval (EStr t) = return $ String $ V.singleton t
-eval (ECall "input" _) = head <$> gets snd <* modify (second tail)
+eval (ECall "input" _) = scalar <$> head <$> gets snd <* modify (second tail)
 eval (ECall "disp" [e]) = disp e >> return undefined
 eval (ECall "sqrt" [e]) = dofD sqrt e
 eval (ECall "factorial" [e]) = dofD (product . enumFromTo 1) e
@@ -128,10 +125,7 @@ eval (EVecFromToStep from step to)
     return $ vec $ V.fromList [nfrom, (nfrom + nstep) .. nto]
 
 disp :: Expr -> Scilab ()
-disp e
-  = do
-    e_ <- eval e
-    tell [e_]
+disp = evalVec >=> tell . V.toList
 
 evalVec :: Valuable a => Expr -> Scilab (V.Vector a)
 evalVec e = getVec <$> eval e
@@ -166,7 +160,7 @@ dof f e = vec <$> V.map f <$> evalVec e
 dofD :: (Double -> Double) -> Expr -> Scilab Value
 dofD = dof
 
-type Scilab = StateT (M.Map T.Text Value, [Value]) (Writer [Value])
+type Scilab = StateT (M.Map T.Text Value, [Double]) (Writer [Double])
 
 readVar :: T.Text -> Scilab Value
 readVar var = (M.! var) <$> getVars
@@ -176,7 +170,7 @@ getVars = gets fst
 
 data Value
   = Number {valueBool :: Bool, valueVec :: V.Vector Double}
-      | String {valueStrVec :: V.Vector T.Text}
+      | String {_valueStrVec :: V.Vector T.Text}
     deriving (Show, Eq)
 
 instance NFData Value where
@@ -214,9 +208,3 @@ instance Valuable Bool where
   isDouble _ = False
 
 instance Valuable Int
-
-vecL :: [Double] -> Value
-vecL = vec . V.fromList
-
-scalarD :: Double -> Value
-scalarD = scalar
