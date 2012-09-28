@@ -1,4 +1,7 @@
-module Scilab.Interpreter (interpret, Value (..), Valuable (..)) where
+module
+  Scilab.Interpreter
+  (interpret, Value (..), Valuable (..), vecL, scalarD)
+  where
 
 -- base
 import Control.Applicative ((<$>), (<*))
@@ -198,3 +201,9 @@ instance Valuable Bool where
   isDouble _ = False
 
 instance Valuable Int
+
+vecL :: [Double] -> Value
+vecL = vec . V.fromList
+
+scalarD :: Double -> Value
+scalarD = scalar

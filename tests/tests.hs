@@ -4,9 +4,6 @@ import Data.Monoid ((<>))
 import Control.Exception (evaluate)
 import System.Timeout (timeout)
 
--- vector
-import qualified Data.Vector as V
-
 -- HUnit
 import
   Test.HUnit
@@ -135,9 +132,3 @@ loop
           $ evaluate
           $ interpret [] "i = 1\nwhile i > 0 do\ni = i + 1\nend"
       Nothing @=? result
-
-vecL :: [Double] -> Value
-vecL = vec . V.fromList
-
-scalarD :: Double -> Value
-scalarD = scalar
