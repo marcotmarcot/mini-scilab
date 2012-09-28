@@ -121,6 +121,7 @@ eval (ECall "disp" e)
     tell [e_]
     return e_
 eval (ECall "sqrt" e) = dofD sqrt <$> eval e
+eval (ECall "factorial" e) = dofD (product . enumFromTo 1) <$> eval e
 eval (ECall var ix)
   = do
     (Vec vec) <- (M.! var) <$> gets fst
