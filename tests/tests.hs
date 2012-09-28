@@ -1,12 +1,16 @@
 -- base
 import System.Exit (exitSuccess, exitFailure)
 import Data.Monoid ((<>))
+import Control.Exception (evaluate)
+import System.Timeout (timeout)
 
 -- vector
 import qualified Data.Vector as V
 
 -- HUnit
-import Test.HUnit (runTestTT, errors, failures, Test (TestList), (~=?))
+import
+  Test.HUnit
+  (runTestTT, errors, failures, Test (TestList, TestCase), (~=?), (@=?))
 
 -- scilab
 import Scilab.Parser
@@ -21,7 +25,7 @@ main
       else exitSuccess
 
 tests :: Test
-tests = TestList [parse, execution]
+tests = TestList [parse, execution, loop]
 
 parse :: Test
 parse
@@ -121,6 +125,16 @@ execution
       (map scalarD [1, 2])
         ~=? interpret [] "i = 1\nwhile [i <= 2]\n  disp(i)\n  i = i + 1\nend",
       [scalarD 1] ~=? interpret [] "for x = 1 do\n  disp(x)\nend"]
+
+loop :: Test
+loop
+  = TestCase
+    $ do
+      result
+        <- timeout 100000
+          $ evaluate
+          $ interpret [] "i = 1\nwhile i > 0 do\ni = i + 1\nend"
+      Nothing @=? result
 
 vecL :: [Double] -> Value
 vecL = vec . V.fromList
