@@ -4,6 +4,9 @@ import Data.Monoid ((<>))
 import Control.Exception (evaluate)
 import System.Timeout (timeout)
 
+-- deepseq
+import Control.DeepSeq (force)
+
 -- HUnit
 import
   Test.HUnit
@@ -135,6 +138,6 @@ loop
       result
         <- timeout 100000
           $ evaluate
-          $ fst
+          $ force
           $ interpret [] "i = 1\nwhile i > 0 do\ni = i + 1\nend"
       Nothing @=? result

@@ -8,6 +8,9 @@ import Control.Applicative ((<$>), (<*))
 import Control.Monad (void)
 import Control.Arrow (first, second)
 
+-- deepseq
+import Control.DeepSeq (NFData (rnf))
+
 -- containers
 import qualified Data.Map as M
 
@@ -170,6 +173,10 @@ data Value
   = Number {valueBool :: Bool, valueVec :: V.Vector Double}
       | String {valueStrVec :: V.Vector T.Text}
     deriving (Show, Eq)
+
+instance NFData Value where
+  rnf (Number b v) = b `seq` v `seq` ()
+  rnf (String v) = v `seq` ()
 
 class Enum a => Valuable a where
   vec :: V.Vector a -> Value

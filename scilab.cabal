@@ -11,6 +11,7 @@ library
     Scilab.Interpreter
   build-depends:
     base == 4.5.*,
+    deepseq == 1.3.*,
     containers == 0.4.*,
     vector == 0.9.*,
     text == 0.11.*,
@@ -27,6 +28,7 @@ test-suite tests
   hs-source-dirs: tests
   build-depends:
    base == 4.5.*,
+    deepseq == 1.3.*,
    vector == 0.9.*,
    HUnit == 1.2.*,
    scilab
