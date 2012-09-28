@@ -1,11 +1,8 @@
-module
-  Scilab.Interpreter
-  (interpret, Value (..), Atom (..), Vec (..), Valuable (..))
-  where
+module Scilab.Interpreter (interpret, Value (..), Valuable (..)) where
 
 -- base
 import Control.Applicative ((<$>), (<*))
-import Control.Monad (liftM2, void)
+import Control.Monad (void)
 import Control.Arrow (first, second)
 
 -- containers
@@ -31,8 +28,6 @@ import Scilab.Parser
 interpret :: [Value] -> T.Text -> [Value]
 interpret input = run input . parser
 
-type Scilab = StateT (M.Map T.Text Value, [Value]) (Writer [Value])
-
 run :: [Value] -> [Command] -> [Value]
 run input cs = execWriter $ evalStateT (execs cs) (M.empty, input)
 
@@ -40,62 +35,45 @@ execs :: [Command] -> Scilab ()
 execs = mapM_ exec
 
 exec :: Command -> Scilab ()
-exec (CIf expr then_ else_)
-  = do
-    cond <- fromAtomValue <$> eval expr
-    if cond then execs then_ else execs else_
+exec (CIf expr then_ else_) = ifS expr then_ else_
 exec (CAttr (RVar var) e) = eval e >>= attr var
 exec (CAttr (RVI var ix) expr)
   = do
-    ix_ <- (fromEnum :: Double -> Int) <$> fromAtomValue <$> eval ix
-    vars <- gets fst
-    let old = valueToVec $ vars M.! var
-    new
-      <- case old of
-          VecNumber v_
-            -> VecNumber
-              <$> (v_ V.//)
-              <$> (: [])
-              <$> (,) (pred ix_)
-              <$> fromAtomValue
-              <$> eval expr
-          VecBool v_
-            -> VecBool
-              <$> (v_ V.//)
-              <$> (: [])
-              <$> (,) (pred ix_)
-              <$> fromAtomValue
-              <$> eval expr
-    modify $ first $ const $ M.insert var (Vec new) vars
+    ix_ <- pred <$> evalScalar ix
+    vars <- getVars
+    let (Number typeOld old) = vars M.! var
+    (Number typeNew new) <- eval expr
+    modify
+      $ first
+      $ const
+      $ M.insert
+        var
+        (Number (typeOld && typeNew) $ old V.// [(ix_, V.head new)])
+        vars
 exec (CExpr expr) = void $ eval expr
-exec c@(CWhile expr body)
+exec c@(CWhile expr body) = ifS expr (body ++ [c]) []
+exec (CFor var expr body) = evalVec expr >>= V.mapM_ (forLoop var body)
+
+ifS :: Expr -> [Command] -> [Command] -> Scilab ()
+ifS cond then_ else_
   = do
-    cond <- fromAtomValue <$> eval expr
-    if cond then execs body >> exec c else return ()
-exec (CFor var expr body)
-  = eval expr >>= for var body . valueToVec
+    result <- evalScalar cond
+    if result then execs then_ else execs else_
 
 attr :: T.Text -> Value -> Scilab ()
 attr var = modify . first . M.insert var
 
-for :: T.Text -> [Command] -> Vec -> Scilab ()
-for var body (VecNumber ns)
-  = V.mapM_ (forLoop var body . Atom . AtomNumber) ns
-for var body (VecBool bs)
-  = V.mapM_ (forLoop var body . Atom . AtomBool) bs
-
-forLoop :: T.Text -> [Command] -> Value -> Scilab ()
-forLoop var body cur = attr var cur >> execs body
+forLoop :: T.Text -> [Command] -> Double -> Scilab ()
+forLoop var body cur = attr var (scalar cur) >> execs body
 
 eval :: Expr -> Scilab Value
-eval (EVar var) = (M.! var) <$> gets fst
+eval (EVar var) = readVar var
 eval (EVec exprs)
   = do
-    exprs_ <- map (Vec . valueToVec) <$> mapM eval exprs
+    values <- mapM eval exprs
     return
-      $ if all isVecBool exprs_
-        then Vec $ VecBool $ V.concat $ map fromVecValue exprs_
-        else Vec $ VecNumber $ V.concat $ map fromVecValue exprs_
+      $ Number (and $ map valueBool values)
+      $ V.concat $ map valueVec values
 eval (EAdd e1 e2) = opD (+) e1 e2
 eval (ESub e1 e2) = opD (-) e1 e2
 eval (EMul e1 e2) = opD (*) e1 e2
@@ -109,119 +87,114 @@ eval (ELT e1 e2) = opD (<) e1 e2
 eval (ELTE e1 e2) = opD (<=) e1 e2
 eval (EAnd e1 e2) = op (&&) e1 e2
 eval (EOr e1 e2) = op (||) e1 e2
-eval (ENot e) = dof not <$> eval e
-eval (ENegate e) = dofD negate <$> eval e
-eval (ENumber n) = return $ toAtom n
-eval (EStr t) = return $ Atom $ VStr t
+eval (ENot e) = dof not e
+eval (ENegate e) = dofD negate e
+eval (ENumber n) = return $ scalar n
+eval (EStr t) = return $ String $ V.singleton t
 eval (ECall "input" _) = head <$> gets snd <* modify (second tail)
 eval (ECall "disp" e)
   = do
     e_ <- eval e
     tell [e_]
     return e_
-eval (ECall "sqrt" e) = dofD sqrt <$> eval e
-eval (ECall "factorial" e) = dofD (product . enumFromTo 1) <$> eval e
+eval (ECall "sqrt" e) = dofD sqrt e
+eval (ECall "factorial" e) = dofD (product . enumFromTo 1) e
 -- eval (ECall "sum" e) = fold
 eval (ECall var ix)
   = do
-    vec <- valueToVec <$> (M.! var) <$> gets fst
-    ix_ <- eval ix
+    (Number typeVec v) <- readVar var
+    (Number typeIx ix_) <- eval ix
     return
-      $ case vec of
-      VecNumber v_ -> filterVec ix_ v_
-      VecBool v_ -> filterVec ix_ v_
+      $ Number typeVec
+      $ case typeIx of
+        False -> V.map ((v V.!) . pred . fromDouble) $ ix_
+        True -> V.map fst $ V.filter snd $ V.zip v $ V.map fromDouble ix_
 eval (EVecFromTo from to)
   = do
-    (Atom (AtomNumber nfrom)) <- eval from
-    (Atom (AtomNumber nto)) <- eval to
-    return $ toVec $ V.fromList [nfrom .. nto]
+    nfrom <- evalScalarD from
+    nto <- evalScalarD to
+    return $ vec $ V.fromList [nfrom .. nto]
 eval (EVecFromToStep from step to)
   = do
-    (Atom (AtomNumber nfrom)) <- eval from
-    (Atom (AtomNumber nstep)) <- eval step
-    (Atom (AtomNumber nto)) <- eval to
-    return $ toVec $ V.fromList [nfrom, (nfrom + nstep) .. nto]
+    nfrom <- evalScalarD from
+    nstep <- evalScalarD step
+    nto <- evalScalarD to
+    return $ vec $ V.fromList [nfrom, (nfrom + nstep) .. nto]
 
-filterVec :: Valuable a => Value -> V.Vector a -> Value
-filterVec ix_ v_
-  = case ix_ of
-    Vec (VecNumber ns) -> toVec $ V.map ((v_ V.!) . pred . fromEnum) ns
-    Vec (VecBool bs) -> toVec $ V.map fst $ V.filter snd $ V.zip v_ bs
-    Atom n -> toAtom $ v_ V.! pred ((fromEnum :: Double -> Int) $ fromAtom n)
+evalVec :: Valuable a => Expr -> Scilab (V.Vector a)
+evalVec e = getVec <$> eval e
+
+evalScalar :: Valuable a => Expr -> Scilab a
+evalScalar e = getScalar <$> eval e
+
+evalScalarD :: Expr -> Scilab Double
+evalScalarD = evalScalar
+
+op :: (Valuable a, Valuable b) => (a -> a -> b) -> Expr -> Expr -> Scilab Value
+op f e1 e2
+  = do
+    v1 <- evalVec e1
+    v2 <- evalVec e2
+    return
+      $ vec
+      $ (if V.length v1 == 1
+          then V.map . f . V.head
+          else if V.length v2 == 1
+            then flip (V.map . flip f . V.head)
+            else V.zipWith f)
+        v1
+        v2
 
 opD :: Valuable a => (Double -> Double -> a) -> Expr -> Expr -> Scilab Value
 opD = op
 
-op :: (Valuable a, Valuable b) => (a -> a -> b) -> Expr -> Expr -> Scilab Value
-op f e1 e2 = liftM2 (doop f) (eval e1) (eval e2)
+dof :: (Valuable a, Valuable b) => (a -> b) -> Expr -> Scilab Value
+dof f e = vec <$> V.map f <$> evalVec e
 
-data Value = Vec Vec | Atom Atom deriving (Eq, Show)
-
-data Atom = AtomNumber Double | AtomBool Bool | VStr T.Text deriving (Eq, Show)
-
-data Vec
-  = VecNumber (V.Vector Double) | VecBool (V.Vector Bool) deriving (Eq, Show)
-
-class Valuable a where
-  fromAtom :: Atom -> a
-  toAtom :: a -> Value
-  fromVec :: Vec -> V.Vector a
-  toVec :: V.Vector a -> Value
-
-  fromAtomValue :: Value -> a
-  fromAtomValue (Atom a) = fromAtom a
-  fromAtomValue (Vec v) = V.head $ fromVec v
-
-  fromVecValue :: Value -> V.Vector a
-  fromVecValue (Vec a) = fromVec a
-  fromVecValue (Atom a) = V.singleton $ fromAtom a
-
-instance Valuable Double where
-  fromAtom (AtomNumber n) = n
-  fromAtom (AtomBool b) = conv b
-  fromAtom _ = error "fromAtom _ :: Double"
-
-  toAtom = Atom . AtomNumber
-
-  fromVec (VecNumber v) = v
-  fromVec (VecBool v) = V.map conv v
-
-  toVec = Vec . VecNumber
-
-conv :: (Enum a, Enum b) => a -> b
-conv = toEnum . fromEnum
-
-instance Valuable Bool where
-  fromAtom (AtomBool b) = b
-  fromAtom (AtomNumber b) = conv b
-  fromAtom _ = error "fromAtom _ :: Bool"
-
-  toAtom = Atom . AtomBool
-
-  fromVec (VecBool v) = v
-  fromVec (VecNumber v) = V.map conv v
-
-  toVec = Vec . VecBool
-
-doop :: (Valuable a, Valuable b) => (a -> a -> b) -> Value -> Value -> Value
-doop f (Vec v1) (Vec v2) = toVec $ V.zipWith f (fromVec v1) (fromVec v2)
-doop f (Vec v) (Atom a) = toVec $ V.map (`f` fromAtom a) (fromVec v)
-doop f (Atom a) (Vec v) = toVec $ V.map (f $ fromAtom a) (fromVec v)
-doop f (Atom a1) (Atom a2) = toAtom $ fromAtom a1 `f` fromAtom a2
-
-dofD :: Valuable b => (Double -> b) -> Value -> Value
+dofD :: (Double -> Double) -> Expr -> Scilab Value
 dofD = dof
 
-dof :: (Valuable a, Valuable b) => (a -> b) -> Value -> Value
-dof f (Vec v) = toVec $ V.map f $ fromVec v
-dof f (Atom a) = toAtom $ f $ fromAtom a
+type Scilab = StateT (M.Map T.Text Value, [Value]) (Writer [Value])
 
-isVecBool :: Value -> Bool
-isVecBool (Vec (VecBool _)) = True
-isVecBool _ = False
+readVar :: T.Text -> Scilab Value
+readVar var = (M.! var) <$> getVars
 
-valueToVec :: Value -> Vec
-valueToVec (Atom (AtomNumber n)) = VecNumber $ V.singleton n
-valueToVec (Atom (AtomBool b)) = VecBool $ V.singleton b
-valueToVec (Vec v) = v
-valueToVec _ = error "valueToVec _"
+getVars :: Scilab (M.Map T.Text Value)
+getVars = gets fst
+
+data Value
+  = Number {valueBool :: Bool, valueVec :: V.Vector Double}
+      | String {valueStrVec :: V.Vector T.Text}
+    deriving (Show, Eq)
+
+class Enum a => Valuable a where
+  vec :: V.Vector a -> Value
+  vec v = Number (not $ isDouble $ V.head v) $ V.map toDouble v
+
+  getVec :: Value -> V.Vector a
+  getVec = V.map fromDouble . valueVec
+
+  getScalar :: Value -> a
+  getScalar = V.head . getVec
+
+  scalar :: a -> Value
+  scalar = vec . V.singleton
+
+  toDouble :: a -> Double
+  toDouble = toEnum . fromEnum
+
+  fromDouble :: Double -> a
+  fromDouble = toEnum . fromEnum
+
+  isDouble :: a -> Bool
+  isDouble _ = True
+
+instance Valuable Double where
+  toDouble = id
+  fromDouble = id
+
+instance Valuable Bool where
+  fromDouble = (/= 0)
+  isDouble _ = False
+
+instance Valuable Int

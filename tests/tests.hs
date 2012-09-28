@@ -46,19 +46,15 @@ parse
 execution :: Test
 execution
   = TestList
-    [[Atom (AtomNumber 2.0)]
-        ~=? interpret [toAtom (2 :: Double)] "a = input(\"\")\ndisp(a)",
-      [Vec (VecNumber (V.fromList [1.0,2.0,3.0,4.0]))]
-        ~=? interpret [] "disp(1 : 4)",
-      [Vec (VecNumber (V.fromList [1.0,3.0,5.0,7.0]))]
-        ~=? interpret [] "disp(1 : 2 : 7)",
-      [Vec (VecNumber (V.fromList []))]
-        ~=? interpret [] "disp(3 : 1)",
-      [Vec (VecNumber (V.fromList [3.0,2.0,1.0]))]
-        ~=? interpret [] "disp(3 : -1 : 1)",
-      [Atom (AtomNumber 450.0)]
+    [[scalarD 2]
+        ~=? interpret [scalarD 2] "a = input(\"\")\ndisp(a)",
+      [vecL [1 .. 4]] ~=? interpret [] "disp(1 : 4)",
+      [vecL [1 ,3 .. 7]] ~=? interpret [] "disp(1 : 2 : 7)",
+      [vecL []] ~=? interpret [] "disp(3 : 1)",
+      [vecL [3, 2, 1]] ~=? interpret [] "disp(3 : -1 : 1)",
+      [scalarD 450]
         ~=? interpret
-          (map toAtom [11 :: Double, 29, 46, 47, 57, 24, 50, 92, 10, 84])
+          (map scalarD [11, 29, 46, 47, 57, 24, 50, 92, 10, 84])
           ("total = 0\n"
             <> "i = 1\n"
             <> "while i <= 10 do\n"
@@ -67,11 +63,9 @@ execution
             <> "  i = i + 1\n"
             <>  "end\n"
             <> "disp(total)"),
-      [Vec
-          (VecNumber
-            (V.fromList [5.5,14.5,23.0,23.5,28.5,12.0,25.0,46.0,5.0,42.0]))]
+      [vecL [5.5, 14.5, 23, 23.5, 28.5, 12, 25, 46, 5, 42]]
         ~=? interpret
-          (map toAtom [11 :: Double, 29, 46, 47, 57, 24, 50, 92, 10, 84])
+          (map scalarD [11, 29, 46, 47, 57, 24, 50, 92, 10, 84])
           ("v = []\n"
             <> "i = 1\n"
             <> "while i <= 10 do\n"
@@ -80,40 +74,34 @@ execution
             <> "  i = i + 1\n"
             <>  "end\n"
             <> "disp(v / 2)"),
-      [Vec
-          (VecNumber
-            (V.fromList [5.5,14.5,23.0,23.5,28.5,12.0,25.0,46.0,5.0,42.0]))]
+      [vecL [5.5, 14.5, 23, 23.5, 28.5, 12, 25, 46, 5, 42]]
         ~=? interpret
-          (map toAtom [11 :: Double, 29, 46, 47, 57, 24, 50, 92, 10, 84])
+          (map scalarD [11, 29, 46, 47, 57, 24, 50, 92, 10, 84])
           ("v = []\n"
             <> "for i = 1 : 10 do\n"
             <> "  n = input(\"\")\n"
             <> "  v = [v n]\n"
             <>  "end\n"
             <> "disp(v / 2)"),
-      [Vec
-          (VecNumber
-            (V.fromList
-              [3.3166247903554,
-                5.385164807134504,
-                6.782329983125268,
-                6.855654600401044,
-                7.54983443527075,
-                4.898979485566356,
-                7.0710678118654755,
-                9.591663046625438,
-                3.1622776601683795,
-                9.16515138991168,
-                -1.0,
-                -1.0,
-                -1.0,
-                -1.0,
-                -1.0]))]
+      [vecL
+          [3.3166247903554,
+            5.385164807134504,
+            6.782329983125268,
+            6.855654600401044,
+            7.54983443527075,
+            4.898979485566356,
+            7.0710678118654755,
+            9.591663046625438,
+            3.1622776601683795,
+            9.16515138991168,
+            -1,
+            -1,
+            -1,
+            -1,
+            -1]]
         ~=? interpret
-          (map
-            toAtom
-            ([11, 29, 46, 47, 57, 24, 50, 92, 10, 84, -18, -29, -25, -40, -35]
-              :: [Double]))
+          (map scalarD
+            [11, 29, 46, 47, 57, 24, 50, 92, 10, 84, -18, -29, -25, -40, -35])
           ("v = []\n"
             <> "for i = 1 : 15 do\n"
             <> "  n = input(\"\")\n"
@@ -125,16 +113,17 @@ execution
             <> "  v = [v n]\n"
             <>  "end\n"
             <> "disp(v)"),
-      [Atom (AtomNumber (-1.0))] ~=? interpret [] "a = 1; disp(-a)",
-      [Vec (VecNumber (V.fromList [-1.0,-1.0,-1.0]))]
-        ~=? interpret [] "disp(-1^[1 2 3])",
-      [Vec (VecNumber (V.fromList [-1.0,1.0,-1.0]))]
-        ~=? interpret [] "disp((-1)^[1 2 3])",
-      [Atom (AtomNumber 2.0)]
-        ~=? interpret [] "a = [1]\na(1) = 2\ndisp(a(1))",
-      [Atom (AtomNumber 2.0)]
-        ~=? interpret [] "a = 1\na(1) = 2\ndisp(a(1))",
-      [Atom (AtomNumber 1.0),Atom (AtomNumber 2.0)]
-        ~=? interpret [] "i = 1\nwhile [i <= 2]\n  disp(i)\n  i = i + 1\nend"
-      [Atom (AtomNumber 1.0)]
-        ~=? interpret [] "for x = 1 do\n  disp(x)\nend"]
+      [scalarD (-1)] ~=? interpret [] "a = 1; disp(-a)",
+      [vecL [-1, -1, -1]] ~=? interpret [] "disp(-1^[1 2 3])",
+      [vecL [-1, 1, -1]] ~=? interpret [] "disp((-1)^[1 2 3])",
+      [scalarD 2] ~=? interpret [] "a = [1]\na(1) = 2\ndisp(a(1))",
+      [scalarD 2] ~=? interpret [] "a = 1\na(1) = 2\ndisp(a(1))",
+      (map scalarD [1, 2])
+        ~=? interpret [] "i = 1\nwhile [i <= 2]\n  disp(i)\n  i = i + 1\nend",
+      [scalarD 1] ~=? interpret [] "for x = 1 do\n  disp(x)\nend"]
+
+vecL :: [Double] -> Value
+vecL = vec . V.fromList
+
+scalarD :: Double -> Value
+scalarD = scalar
