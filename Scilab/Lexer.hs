@@ -95,6 +95,7 @@ token
       <|> (char ']' >> return TCSB)
       <|> (char '\n' >> return TNlSc)
       <|> (char ';' >> return TNlSc)
+      <|> (string "\r\n" >> return TNlSc)
       <|> (char '+' >> return TAdd)
       <|> (char '-' >> return TSub)
       <|> (char '*' >> return TMul)

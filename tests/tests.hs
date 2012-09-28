@@ -129,7 +129,9 @@ execution
           []
           "i = 1\nwhile [i <= 2]\n  disp(i)\n  i = i + 1\nend",
       ([], [scalarD 1])
-        ~=? interpret [] "for x = 1 do\n  disp(x)\nend"]
+        ~=? interpret [] "for x = 1 do\n  disp(x)\nend",
+      ([], [scalarD 1])
+        ~=? interpret [scalarD 1] "a = input(\"\")\r\ndisp(a)"]
 
 loop :: Test
 loop
