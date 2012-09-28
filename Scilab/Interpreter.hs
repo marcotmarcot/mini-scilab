@@ -102,7 +102,8 @@ eval (ECall "disp" e)
     return e_
 eval (ECall "sqrt" e) = dofD sqrt e
 eval (ECall "factorial" e) = dofD (product . enumFromTo 1) e
--- eval (ECall "sum" e) = fold
+eval (ECall "sum" e)
+  = scalar <$> (V.sum :: V.Vector Double -> Double) <$> evalVec e
 eval (ECall var ix)
   = do
     (Number typeVec v) <- readVar var
