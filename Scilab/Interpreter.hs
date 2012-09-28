@@ -49,7 +49,7 @@ exec (CAttr (RVI var ix) expr)
   = do
     ix_ <- (fromEnum :: Double -> Int) <$> fromAtomValue <$> eval ix
     vars <- gets fst
-    let (Vec old) = vars M.! var
+    let old = valueToVec $ vars M.! var
     new
       <- case old of
           VecNumber v_
@@ -73,17 +73,16 @@ exec c@(CWhile expr body)
     cond <- fromAtomValue <$> eval expr
     if cond then execs body >> exec c else return ()
 exec (CFor var expr body)
-  = eval expr >>= for var body
+  = eval expr >>= for var body . valueToVec
 
 attr :: T.Text -> Value -> Scilab ()
 attr var = modify . first . M.insert var
 
-for :: T.Text -> [Command] -> Value -> Scilab ()
-for var body (Vec (VecNumber ns))
+for :: T.Text -> [Command] -> Vec -> Scilab ()
+for var body (VecNumber ns)
   = V.mapM_ (forLoop var body . Atom . AtomNumber) ns
-for var body (Vec (VecBool bs))
+for var body (VecBool bs)
   = V.mapM_ (forLoop var body . Atom . AtomBool) bs
-for _ _ _ = error "for _"
 
 forLoop :: T.Text -> [Command] -> Value -> Scilab ()
 forLoop var body cur = attr var cur >> execs body
@@ -92,7 +91,7 @@ eval :: Expr -> Scilab Value
 eval (EVar var) = (M.! var) <$> gets fst
 eval (EVec exprs)
   = do
-    exprs_ <- map valueToVec <$> mapM eval exprs
+    exprs_ <- map (Vec . valueToVec) <$> mapM eval exprs
     return
       $ if all isVecBool exprs_
         then Vec $ VecBool $ V.concat $ map fromVecValue exprs_
@@ -122,9 +121,10 @@ eval (ECall "disp" e)
     return e_
 eval (ECall "sqrt" e) = dofD sqrt <$> eval e
 eval (ECall "factorial" e) = dofD (product . enumFromTo 1) <$> eval e
+-- eval (ECall "sum" e) = fold
 eval (ECall var ix)
   = do
-    (Vec vec) <- (M.! var) <$> gets fst
+    vec <- valueToVec <$> (M.! var) <$> gets fst
     ix_ <- eval ix
     return
       $ case vec of
@@ -170,11 +170,11 @@ class Valuable a where
 
   fromAtomValue :: Value -> a
   fromAtomValue (Atom a) = fromAtom a
-  fromAtomValue _ = error "fromAtomValue _"
+  fromAtomValue (Vec v) = V.head $ fromVec v
 
   fromVecValue :: Value -> V.Vector a
   fromVecValue (Vec a) = fromVec a
-  fromVecValue _ = error "fromVecValue _"
+  fromVecValue (Atom a) = V.singleton $ fromAtom a
 
 instance Valuable Double where
   fromAtom (AtomNumber n) = n
@@ -220,7 +220,8 @@ isVecBool :: Value -> Bool
 isVecBool (Vec (VecBool _)) = True
 isVecBool _ = False
 
-valueToVec :: Value -> Value
-valueToVec (Atom (AtomNumber n)) = Vec $ VecNumber $ V.singleton n
-valueToVec (Atom (AtomBool b)) = Vec $ VecBool $ V.singleton b
-valueToVec v = v
+valueToVec :: Value -> Vec
+valueToVec (Atom (AtomNumber n)) = VecNumber $ V.singleton n
+valueToVec (Atom (AtomBool b)) = VecBool $ V.singleton b
+valueToVec (Vec v) = v
+valueToVec _ = error "valueToVec _"
