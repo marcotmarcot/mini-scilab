@@ -101,7 +101,7 @@ eval (ECall "sqrt" [e]) = dofD sqrt e
 eval (ECall "factorial" [e]) = dofD (product . enumFromTo 1) e
 eval (ECall "sum" [e])
   = scalar <$> (V.sum :: V.Vector Double -> Double) <$> evalVec e
-eval (ECall "printf" es) = mapM_ disp es >> return undefined
+eval (ECall "printf" (_ : es)) = mapM_ disp es >> return undefined
 eval (ECall var [ix])
   = do
     (Number typeVec v) <- readVar var
