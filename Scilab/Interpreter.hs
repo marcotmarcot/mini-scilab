@@ -99,9 +99,12 @@ eval (ECall "input" _) = scalar <$> head <$> gets snd <* modify (second tail)
 eval (ECall "disp" [e]) = disp e >> return undefined
 eval (ECall "sqrt" [e]) = dofD sqrt e
 eval (ECall "factorial" [e]) = dofD (product . enumFromTo 1) e
-eval (ECall "sum" [e])
-  = scalar <$> (V.sum :: V.Vector Double -> Double) <$> evalVec e
+eval (ECall "sum" [e]) = vf V.sum e
 eval (ECall "printf" (_ : es)) = mapM_ disp es >> return undefined
+eval (ECall "max" [e]) = vf V.maximum e
+eval (ECall "min" [e]) = vf V.minimum e
+eval (ECall "length" [e]) = vf (toEnum . V.length) e
+eval (ECall "mean" [e]) = vf (\x -> V.sum x / toEnum (V.length x)) e
 eval (ECall var [ix])
   = do
     (Number typeVec v) <- readVar var
@@ -159,6 +162,9 @@ dof f e = vec <$> V.map f <$> evalVec e
 
 dofD :: (Double -> Double) -> Expr -> Scilab Value
 dofD = dof
+
+vf :: (V.Vector Double -> Double) -> Expr -> Scilab Value
+vf f e = scalar <$> f <$> evalVec e
 
 type Scilab = StateT (M.Map T.Text Value, [Double]) (Writer [Double])
 
