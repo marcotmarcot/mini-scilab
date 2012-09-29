@@ -4,6 +4,7 @@ module Scilab.Interpreter (interpret) where
 import Control.Applicative ((<$>), (<*))
 import Control.Monad (void, (>=>))
 import Control.Arrow (first, second)
+import Data.List (nub)
 
 -- deepseq
 import Control.DeepSeq (NFData (rnf))
@@ -105,6 +106,14 @@ eval (ECall "max" [e]) = vf V.maximum e
 eval (ECall "min" [e]) = vf V.minimum e
 eval (ECall "length" [e]) = vf (toEnum . V.length) e
 eval (ECall "mean" [e]) = vf (\x -> V.sum x / toEnum (V.length x)) e
+eval (ECall "modulo" [e1, e2])
+  = opD (\v1 v2 -> v1 - toEnum (fromEnum (v1 / v2)) * v2) e1 e2
+eval (ECall "unique" [e])
+  = vec
+    <$> V.fromList
+    <$> nub
+    <$> V.toList
+    <$> (evalVec e :: Scilab (V.Vector Double))
 eval (ECall var [ix])
   = do
     (Number typeVec v) <- readVar var
