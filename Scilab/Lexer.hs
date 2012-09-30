@@ -101,6 +101,7 @@ token
       <|> (char '*' >> return TMul)
       <|> (char '/' >> return TDiv)
       <|> (char '^' >> return TPow)
+      <|> (char '~' >> return TNot)
       <|> try
         (TNumber
           <$> read
