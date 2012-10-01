@@ -52,7 +52,9 @@ exec (CAttr (RVI var [ix]) expr)
       $ const
       $ M.insert
         var
-        (Number (typeOld && typeNew) $ old V.// [(ix_, V.head new)])
+        (Number (typeOld && typeNew)
+          $ (old V.++ V.replicate (ix_ - V.length old) 0)
+            V.// [(ix_, V.head new)])
         vars
 exec (CAttr (RVI {}) _) = error "exec (CAttr (RVI {}) _)"
 exec (CExpr expr) = void $ eval expr
