@@ -63,7 +63,7 @@ data Token
     deriving (Show, Eq)
 
 lexer :: T.Text -> Either ParseError [Token]
-lexer = parse (many token <* whites <* eof) "lexer"
+lexer = parse (many (token <* whites) <* eof) "lexer"
 
 (~==) :: Token -> Token -> Bool
 (TNumber {}) ~== (TNumber {}) = True
