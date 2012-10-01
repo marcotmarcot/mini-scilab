@@ -45,15 +45,17 @@ exec (CAttr (RVI var [ix]) expr)
   = do
     ix_ <- pred <$> evalScalar ix
     vars <- getVars
-    let (Number typeOld old) = vars M.! var
     (Number typeNew new) <- eval expr
+    let
+      (Number typeOld old)
+        = M.findWithDefault (Number typeNew V.empty) var vars
     modify
       $ first
       $ const
       $ M.insert
         var
         (Number (typeOld && typeNew)
-          $ (old V.++ V.replicate (ix_ - V.length old) 0)
+          $ (old V.++ V.replicate (ix_ - V.length old + 1) 0)
             V.// [(ix_, V.head new)])
         vars
 exec (CAttr (RVI {}) _) = error "exec (CAttr (RVI {}) _)"
