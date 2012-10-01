@@ -114,7 +114,7 @@ token
               option "" $ try $ many1 digit])
       <|> try (TId <$> T.pack <$> liftM2 (:) letter (many alphaNum))
       <|> try
-        (char '"' >> TStr <$> T.pack <$> many (noneOf "\"") <* char '"'))
+        (oneOf "'\"" >> TStr <$> T.pack <$> many (noneOf "'\"") <* char '"'))
 
 whites :: Parser ()
 whites = void $ many $ oneOf " \t"
