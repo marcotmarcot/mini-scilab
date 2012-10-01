@@ -31,6 +31,7 @@ data Token
   = TIf
       | TThenDo
       | TElse
+      | TElseIf
       | TEnd
       | TWhile
       | TFor
@@ -76,6 +77,7 @@ token
     >> (try (string "if" >> return TIf)
       <|> try (string "then" >> return TThenDo)
       <|> try (string "do" >> return TThenDo)
+      <|> try (string "elseif" >> return TElseIf)
       <|> try (string "else" >> return TElse)
       <|> try (string "end" >> return TEnd)
       <|> try (string "while" >> return TWhile)

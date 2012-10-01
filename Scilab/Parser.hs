@@ -65,12 +65,19 @@ command
     <|> CExpr <$> expr
 
 ifelse :: Parser Command
-ifelse
+ifelse = token TIf >> ifbase
+
+ifbase :: Parser Command
+ifbase
   = liftM3
     CIf
-    (token TIf >> expr)
+    expr
     (optional (token TThenDo) >> commands)
-    (option [] (token TElse >> commands) <* token TEnd)
+    (option
+        []
+        ((token TElse >> commands)
+          <|> (token TElseIf >> (: []) <$> ifbase))
+      <* token TEnd)
 
 while :: Parser Command
 while
