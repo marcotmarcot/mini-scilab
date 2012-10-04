@@ -5,6 +5,7 @@ import Control.Applicative ((<$>), (<*))
 import Control.Monad (void, (>=>))
 import Control.Arrow (first, second)
 import Data.List (nub)
+import Data.Monoid ((<>))
 
 -- deepseq
 import Control.DeepSeq (NFData (rnf))
@@ -118,6 +119,22 @@ eval (ECall "unique" [e])
     <$> nub
     <$> V.toList
     <$> (evalVec e :: Scilab (V.Vector Double))
+eval (ECall "sci2exp" [e])
+  = do
+    value <- eval e
+    return
+      $ String
+      $ V.singleton
+      $ case value of
+        Number typ v
+          | V.length v == 1 -> showType typ $ V.head v
+          | otherwise
+            -> "["
+              <> T.intercalate "," (V.toList $ V.map (showType typ) v)
+              <> "]"
+        String v
+          | V.length v == 1 -> V.head v
+          | otherwise -> T.pack $ show $ V.toList v
 eval (ECall var [ix])
   = do
     (Number typeVec v) <- readVar var
@@ -139,6 +156,12 @@ eval (EVecFromToStep from step to)
     nstep <- evalScalarD step
     nto <- evalScalarD to
     return $ vec $ V.fromList [nfrom, (nfrom + nstep) .. nto]
+
+showType :: Bool -> Double -> T.Text
+showType True 1 = "%t"
+showType True 0 = "%f"
+showType False d = T.pack $ show d
+showType _ _ = error "showType _ _"
 
 disp :: Expr -> Scilab ()
 disp = evalVec >=> tell . V.toList
