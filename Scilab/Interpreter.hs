@@ -148,6 +148,8 @@ eval (ECall "sci2exp" [e])
         String v
           | V.length v == 1 -> V.head v
           | otherwise -> T.pack $ show $ V.toList v
+eval (ECall "strcat" [e])
+  = String <$> V.singleton <$> T.concat <$> V.toList <$> getStrVec <$> eval e
 eval (ECall var [ix])
   = do
     (Number typeVec v) <- readVar var
@@ -264,3 +266,7 @@ instance Valuable Bool where
   isDouble _ = False
 
 instance Valuable Int
+
+getStrVec :: Value -> V.Vector T.Text
+getStrVec (String v) = v
+getStrVec _ = error "getStrVec _"
