@@ -2,7 +2,7 @@ module Scilab.Interpreter (interpret) where
 
 -- base
 import Control.Applicative ((<$>), (<*))
-import Control.Monad (void, (>=>))
+import Control.Monad (void, (>=>), liftM2)
 import Control.Arrow (first, second)
 import Data.List (nub)
 import Data.Monoid ((<>))
@@ -84,7 +84,20 @@ eval (EVec exprs)
     return
       $ Number (and $ map valueBool values)
       $ V.concat $ map valueVec values
-eval (EAdd e1 e2) = opD (+) e1 e2
+eval (EAdd e1 e2)
+  = do
+    v1 <- eval e1
+    v2 <- eval e2
+    return
+      $ case v1 of
+        Number _ vec1
+          -> case v2 of
+            Number _ vec2 -> opV (+) vec1 vec2
+            _ -> error "eval EAdd"
+        String vec1
+          -> case v2 of
+            String vec2 -> String $ V.zipWith (<>) vec1 vec2
+            _ -> error "eval EAdd"
 eval (ESub e1 e2) = opD (-) e1 e2
 eval (EMul e1 e2) = opD (*) e1 e2
 eval (EDiv e1 e2) = opD (/) e1 e2
@@ -176,19 +189,20 @@ evalScalarD :: Expr -> Scilab Double
 evalScalarD = evalScalar
 
 op :: (Valuable a, Valuable b) => (a -> a -> b) -> Expr -> Expr -> Scilab Value
-op f e1 e2
-  = do
-    v1 <- evalVec e1
-    v2 <- evalVec e2
-    return
-      $ vec
-      $ (if V.length v1 == 1
-          then V.map . f . V.head
-          else if V.length v2 == 1
-            then flip (V.map . flip f . V.head)
-            else V.zipWith f)
-        v1
-        v2
+op f e1 e2 = liftM2 (opV f) (evalVec e1) (evalVec e2)
+
+opV
+  :: (Valuable a, Valuable b)
+    => (a -> a -> b) -> V.Vector a -> V.Vector a -> Value
+opV f v1 v2
+  = vec
+    $ (if V.length v1 == 1
+        then V.map . f . V.head
+        else if V.length v2 == 1
+          then flip (V.map . flip f . V.head)
+          else V.zipWith f)
+      v1
+      v2
 
 opD :: Valuable a => (Double -> Double -> a) -> Expr -> Expr -> Scilab Value
 opD = op
