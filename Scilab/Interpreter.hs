@@ -46,18 +46,21 @@ exec (CAttr (RVI var [ix]) expr)
   = do
     ix_ <- pred <$> evalScalar ix
     vars <- getVars
-    (Number typeNew new) <- eval expr
+    (Number typeNew new _) <- eval expr
     let
-      (Number typeOld old)
-        = M.findWithDefault (Number typeNew V.empty) var vars
+      (Number typeOld old _)
+        = M.findWithDefault (Number typeNew V.empty 0) var vars
+      newv
+        = (old V.++ V.replicate (ix_ - V.length old + 1) 0)
+          V.// [(ix_, V.head new)]
     modify
       $ first
       $ const
       $ M.insert
         var
         (Number (typeOld && typeNew)
-          $ (old V.++ V.replicate (ix_ - V.length old + 1) 0)
-            V.// [(ix_, V.head new)])
+          newv
+          (V.length newv))
         vars
 exec (CAttr (RVI {}) _) = error "exec (CAttr (RVI {}) _)"
 exec (CExpr expr) = void $ eval expr
@@ -81,18 +84,21 @@ eval (EVar var) = readVar var
 eval (EVec exprs)
   = do
     values <- mapM eval exprs
+    let newv = V.concat $ map valueVec values
     return
       $ Number (and $ map valueBool values)
-      $ V.concat $ map valueVec values
+        (newv)
+        (V.length newv)
+
 eval (EAdd e1 e2)
   = do
     v1 <- eval e1
     v2 <- eval e2
     return
       $ case v1 of
-        Number _ vec1
+        Number _ vec1 _
           -> case v2 of
-            Number _ vec2 -> opV (+) vec1 vec2
+            Number _ vec2 _ -> opV (+) vec1 vec2
             _ -> error "eval EAdd"
         String vec1
           -> case v2 of
@@ -139,7 +145,7 @@ eval (ECall "sci2exp" [e])
       $ String
       $ V.singleton
       $ case value of
-        Number typ v
+        Number typ v _
           | V.length v == 1 -> showType typ $ V.head v
           | otherwise
             -> "["
@@ -152,13 +158,14 @@ eval (ECall "strcat" [e])
   = String <$> V.singleton <$> T.concat <$> V.toList <$> getStrVec <$> eval e
 eval (ECall var [ix])
   = do
-    (Number typeVec v) <- readVar var
-    (Number typeIx ix_) <- eval ix
-    return
-      $ Number typeVec
-      $ case typeIx of
-        False -> V.map ((v V.!) . pred . fromDouble) $ ix_
-        True -> V.map fst $ V.filter snd $ V.zip v $ V.map fromDouble ix_
+    (Number typeVec v _) <- readVar var
+    (Number typeIx ix_ _) <- eval ix
+    let
+      newv
+        = case typeIx of
+          False -> V.map ((v V.!) . pred . fromDouble) $ ix_
+          True -> V.map fst $ V.filter snd $ V.zip v $ V.map fromDouble ix_
+    return $ Number typeVec newv (V.length newv)
 eval (ECall {}) = error "eval (ECall {})"
 eval (EVecFromTo from to)
   = do
@@ -227,17 +234,17 @@ getVars :: Scilab (M.Map T.Text Value)
 getVars = gets fst
 
 data Value
-  = Number {valueBool :: Bool, valueVec :: V.Vector Double}
+  = Number {valueBool :: Bool, valueVec :: V.Vector Double, _valueSize :: Int}
       | String {_valueStrVec :: V.Vector T.Text}
     deriving (Show, Eq)
 
 instance NFData Value where
-  rnf (Number b v) = b `seq` v `seq` ()
+  rnf (Number b v s) = b `seq` v `seq` s `seq` ()
   rnf (String v) = v `seq` ()
 
 class Enum a => Valuable a where
   vec :: V.Vector a -> Value
-  vec v = Number (not $ isDouble $ V.head v) $ V.map toDouble v
+  vec v = Number (not $ isDouble $ V.head v) (V.map toDouble v) (V.length v)
 
   getVec :: Value -> V.Vector a
   getVec = V.map fromDouble . valueVec
