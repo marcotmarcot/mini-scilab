@@ -153,6 +153,7 @@ eval (ECall "disp" [e]) = disp e >> return undefined
 eval (ECall "sqrt" [e]) = dofD sqrt e
 eval (ECall "factorial" [e]) = dofD (product . enumFromTo 1) e
 eval (ECall "sum" [e]) = vf V.sum e
+eval (ECall "prod" [e]) = vf V.product e
 eval (ECall "printf" (_ : es)) = mapM_ disp es >> return undefined
 eval (ECall "max" [e]) = vf V.maximum e
 eval (ECall "min" [e]) = vf V.minimum e
