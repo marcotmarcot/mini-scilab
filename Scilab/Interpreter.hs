@@ -131,6 +131,7 @@ eval (EAdd e1 e2)
           -> case v2 of
             String vec2 -> String $ V.zipWith (<>) vec1 vec2
             _ -> error "eval EAdd"
+        _ -> error "eadd _"
 eval (ESub e1 e2) = opD (-) e1 e2
 eval (EMul e1 e2) = opD (*) e1 e2
 eval (EDiv e1 e2) = opD (/) e1 e2
@@ -181,12 +182,13 @@ eval (ECall "sci2exp" [e])
         String v
           | V.length v == 1 -> V.head v
           | otherwise -> T.pack $ show $ V.toList v
+        _ -> error "sci2exp _"
 eval (ECall "strcat" [e])
   = String <$> V.singleton <$> T.concat <$> V.toList <$> getStrVec <$> eval e
 eval (ECall var [ix])
   = do
     var_ <- readVar var
-    (Number typeIx ix_ _) <- eval ix
+    (typeIx, ix_) <- evalIx 1 ix
     return
       $ case typeIx of
         False -> getIndex (V.singleton 1) ix_ var_
@@ -200,9 +202,9 @@ eval (ECall var [ix])
             var_
 eval (ECall var [ixl, ixc])
   = do
-    v <- readVar var
-    (Number False ixl_ 1) <- eval ixl
-    (Number False ixc_ 1) <- eval ixc
+    v@(Number _ vect lns) <- readVar var
+    (_, ixl_) <- evalIx lns ixl
+    (_, ixc_) <- evalIx (V.length vect `div` lns) ixc
     return $ getIndex ixl_ ixc_ v
 eval (ECall {}) = error "eval (ECall {})"
 eval (EVecFromTo from to)
@@ -216,6 +218,17 @@ eval (EVecFromToStep from step to)
     nstep <- evalScalarD step
     nto <- evalScalarD to
     return $ vec $ V.fromList [nfrom, (nfrom + nstep) .. nto]
+eval EColon = return VColon
+
+evalIx :: Int -> Expr -> Scilab (Bool, V.Vector Double)
+evalIx size ix
+  = do
+    ixVal <- eval ix
+    return
+      $ case ixVal of
+        (Number typeIx_ ix__ _) -> (typeIx_, ix__)
+        VColon -> (False, V.enumFromN 1 size)
+        _ -> error "evalIx case _"
 
 getIndex :: V.Vector Double -> V.Vector Double -> Value -> Value
 getIndex ixl ixc (Number typeVec v linesVec)
@@ -229,9 +242,8 @@ getIndex ixl ixc (Number typeVec v linesVec)
               -> V.map
                  (\ixl_
                    -> v
-                      V.! (pred (fromEnum ixc_) * linesVec
-                        + pred (fromEnum ixl_)))
-                 ixl)
+                     V.! (pred (fromEnum ixc_) * linesVec
+                       + pred (fromEnum ixl_))) ixl)
             ixc
 getIndex _ _ _ = error "getIndex _"
 
@@ -292,11 +304,13 @@ getVars = gets fst
 data Value
   = Number {valueBool :: Bool, valueVec :: V.Vector Double, _valueLines :: Int}
       | String {_valueStrVec :: V.Vector T.Text}
+      | VColon
     deriving (Show, Eq)
 
 instance NFData Value where
   rnf (Number b v s) = b `seq` v `seq` s `seq` ()
   rnf (String v) = v `seq` ()
+  rnf VColon = ()
 
 class Enum a => Valuable a where
   vec :: V.Vector a -> Value

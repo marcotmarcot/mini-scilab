@@ -122,6 +122,7 @@ data Expr
       | ENegate Expr
       | ENumber Double
       | EStr T.Text
+      | EColon
     deriving (Show, Eq)
 
 expr :: Parser Expr
@@ -168,6 +169,7 @@ noop_expr
     <|> literal_expr
     <|> vec_expr
     <|> call_expr EVar ECall
+    <|> (token TColon >> return EColon)
 
 literal_expr :: Parser Expr
 literal_expr
