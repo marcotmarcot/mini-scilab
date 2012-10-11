@@ -300,7 +300,7 @@ instance NFData Value where
 
 class Enum a => Valuable a where
   vec :: V.Vector a -> Value
-  vec v = Number (not $ isDouble $ V.head v) (V.map toDouble v) (V.length v)
+  vec v = Number (not $ isDouble $ V.head v) (V.map toDouble v) 1
 
   getVec :: Value -> V.Vector a
   getVec = V.map fromDouble . valueVec
