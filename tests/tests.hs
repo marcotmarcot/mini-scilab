@@ -7,6 +7,9 @@ import System.Timeout (timeout)
 -- deepseq
 import Control.DeepSeq (force)
 
+-- vector
+import qualified Data.Vector as V
+
 -- HUnit
 import
   Test.HUnit
@@ -25,7 +28,7 @@ main
       else exitSuccess
 
 tests :: Test
-tests = TestList [parse, execution, loop]
+tests = TestList [parse, execution, loop, others]
 
 parse :: Test
 parse
@@ -130,6 +133,22 @@ execution
         ~=? interpret [1] "a = input(\"\")\r\ndisp(a)",
       ([], [1, 2]) ~=? interpret [] "printf(\"\", 1, 2)",
       ([], [3]) ~=? interpret [] "a_b = 3; disp(a_b)"]
+
+others :: Test
+others
+  = Number
+      False
+      (V.replicate 11 0
+        V.++ V.singleton 8
+        V.++ V.replicate 14 0
+        V.++ V.singleton 8
+        V.++ V.replicate 3 0)
+      6
+    ~=? updateVector
+      6
+      2
+      (Number False (V.singleton 8) 1)
+      (Number False (V.replicate 14 0 V.++ V.singleton 8) 3)
 
 loop :: Test
 loop

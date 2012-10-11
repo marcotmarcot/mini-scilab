@@ -1,4 +1,4 @@
-module Scilab.Interpreter (interpret) where
+module Scilab.Interpreter (interpret, Value (..), updateVector) where
 
 -- base
 import Control.Applicative ((<$>), (<*))
@@ -44,23 +44,57 @@ exec (CIf expr then_ else_) = ifS expr then_ else_
 exec (CAttr (RVar var) e) = eval e >>= attr var
 exec (CAttr (RVI var [ix]) expr)
   = do
-    ix_ <- pred <$> evalScalar ix
-    vars <- getVars
-    (Number typeNew new _) <- eval expr
-    let
-      (Number typeOld old _)
-        = M.findWithDefault (Number typeNew V.empty 0) var vars
-      newv
-        = (old V.++ V.replicate (ix_ - V.length old + 1) 0)
-          V.// [(ix_, V.head new)]
-    modify
-      $ first
-      $ const
-      $ M.insert var (Number (typeOld && typeNew) newv 1) vars
+    ix_ <- evalScalar ix
+    rvi var 1 ix_ expr
+exec (CAttr (RVI var [ixl, ixc]) expr)
+  = do
+    ixl_ <- evalScalar ixl
+    ixc_ <- evalScalar ixc
+    rvi var ixl_ ixc_ expr
 exec (CAttr (RVI {}) _) = error "exec (CAttr (RVI {}) _)"
 exec (CExpr expr) = void $ eval expr
 exec c@(CWhile expr body) = ifS expr (body ++ [c]) []
 exec (CFor var expr body) = evalVec expr >>= V.mapM_ (forLoop var body)
+
+rvi :: T.Text -> Double -> Double -> Expr -> Scilab ()
+rvi var ixl ixc expr
+  = do
+    vars <- getVars
+    expr_@(Number typeNew _ _) <- eval expr
+    let
+      old
+        = M.findWithDefault (Number typeNew V.empty 0) var vars
+    modify
+      $ first
+      $ const
+      $ M.insert var (updateVector ixl ixc expr_ old) vars
+
+updateVector :: Double -> Double -> Value -> Value -> Value
+updateVector ixl ixc (Number typeNew new 1) (Number typeOld old oldLines)
+  = Number (typeOld && typeNew) newv newLines
+    where
+      ixl_ = fromEnum ixl
+      ixc_ = fromEnum ixc
+      oldSize = V.length old
+      oldColumns = oldSize `div` oldLines
+      newLines = oldLines `max` ixl_
+      newColumns = oldColumns `max` ixc_
+      ix = pred ixc_ * newLines + pred ixl_
+      fill = V.replicate (newLines - oldLines) 0
+      withNewLines
+        = intercalateEnd
+            fill
+            (map
+              (\x -> V.slice x oldLines old)
+              [0, oldLines .. oldSize - oldLines])
+      withNewColumns
+        = withNewLines V.++ V.replicate ((newColumns - oldColumns) * newLines) 0
+      newv = withNewColumns V.// [(ix, V.head new)]
+updateVector _ _ _ _ = error "updateVector _"
+
+intercalateEnd :: V.Vector a -> [V.Vector a] -> V.Vector a
+intercalateEnd _ [] = V.empty
+intercalateEnd y (x : xs) = x V.++ y V.++ intercalateEnd y xs
 
 ifS :: Expr -> [Command] -> [Command] -> Scilab ()
 ifS cond then_ else_
@@ -227,7 +261,7 @@ getVars :: Scilab (M.Map T.Text Value)
 getVars = gets fst
 
 data Value
-  = Number {valueBool :: Bool, valueVec :: V.Vector Double, _valueSize :: Int}
+  = Number {valueBool :: Bool, valueVec :: V.Vector Double, _valueLines :: Int}
       | String {_valueStrVec :: V.Vector T.Text}
     deriving (Show, Eq)
 
