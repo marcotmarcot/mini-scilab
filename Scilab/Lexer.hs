@@ -16,7 +16,6 @@ import
     many1,
     digit,
     letter,
-    alphaNum,
     (<|>),
     many,
     noneOf,
@@ -119,9 +118,24 @@ token
             [many1 digit,
               option "" $ try $ (: []) <$> char '.',
               option "" $ try $ many1 digit])
-      <|> try (TId <$> T.pack <$> liftM2 (:) letter (many alphaNum))
+      <|> try (TId <$> T.pack <$> liftM2 (:) fid rid)
       <|> try
         (oneOf "'\"" >> TStr <$> T.pack <$> many (noneOf "'\"") <* char '"'))
+
+fid :: Parser Char
+fid = cid <|> char '%'
+
+rid :: Parser String
+rid = many $ cid <|> digit
+
+cid :: Parser Char
+cid
+  = letter
+    <|> char '_'
+    <|> char '#'
+    <|> char '!'
+    <|> char '$'
+    <|> char '?'
 
 whites :: Parser ()
 whites = void $ many $ oneOf " \t"
