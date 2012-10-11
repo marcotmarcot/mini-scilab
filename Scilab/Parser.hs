@@ -184,7 +184,8 @@ literal_str
     return $ EStr s
 
 vec_expr :: Parser Expr
-vec_expr = token TOSB >> EVec <$> many expr <* token TCSB
+vec_expr
+  = token TOSB >> EVec <$> sepBy expr (optional $ token TComma) <* token TCSB
 
 call_expr :: (T.Text -> a) -> (T.Text -> [Expr] -> a) -> Parser a
 call_expr cvar ccall = try (liftM2 ccall iden parameters) <|> cvar <$> iden
