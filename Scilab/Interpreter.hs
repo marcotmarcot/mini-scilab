@@ -56,12 +56,7 @@ exec (CAttr (RVI var [ix]) expr)
     modify
       $ first
       $ const
-      $ M.insert
-        var
-        (Number (typeOld && typeNew)
-          newv
-          (V.length newv))
-        vars
+      $ M.insert var (Number (typeOld && typeNew) newv 1) vars
 exec (CAttr (RVI {}) _) = error "exec (CAttr (RVI {}) _)"
 exec (CExpr expr) = void $ eval expr
 exec c@(CWhile expr body) = ifS expr (body ++ [c]) []
@@ -86,9 +81,7 @@ eval (EVec exprs)
     values <- mapM eval exprs
     let newv = V.concat $ map valueVec values
     return
-      $ Number (and $ map valueBool values)
-        (newv)
-        (V.length newv)
+      $ Number (and $ map valueBool values) newv 1
 
 eval (EAdd e1 e2)
   = do
@@ -165,7 +158,7 @@ eval (ECall var [ix])
         = case typeIx of
           False -> V.map ((v V.!) . pred . fromDouble) $ ix_
           True -> V.map fst $ V.filter snd $ V.zip v $ V.map fromDouble ix_
-    return $ Number typeVec newv (V.length newv)
+    return $ Number typeVec newv 1
 eval (ECall {}) = error "eval (ECall {})"
 eval (EVecFromTo from to)
   = do
