@@ -128,7 +128,8 @@ execution
         ~=? interpret [] "for x = 1 do\n  disp(x)\nend",
       ([], [1])
         ~=? interpret [1] "a = input(\"\")\r\ndisp(a)",
-      ([], [1, 2]) ~=? interpret [] "printf(\"\", 1, 2)"]
+      ([], [1, 2]) ~=? interpret [] "printf(\"\", 1, 2)",
+      ([], [3]) ~=? interpret [] "a_b = 3; disp(a_b)"]
 
 loop :: Test
 loop
