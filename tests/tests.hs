@@ -132,23 +132,45 @@ execution
       ([], [1])
         ~=? interpret [1] "a = input(\"\")\r\ndisp(a)",
       ([], [1, 2]) ~=? interpret [] "printf(\"\", 1, 2)",
-      ([], [3]) ~=? interpret [] "a_b = 3; disp(a_b)"]
+      ([], [3]) ~=? interpret [] "a_b = 3; disp(a_b)",
+      ([], [25.0,24.0,63.0,34.0,72.0,79.0,87.0,51.0,94.0,11.0])
+        ~=? interpret
+          [25.0,76.0,43.0,29.0,5.0,30.0,63.0,34.0,52.0,98.0,89.0,24.0,82.0,10.0,76.0,90.0,95.0,94.0,30.0,7.0,59.0,66.0,63.0,76.0,1.0,13.0,62.0,79.0,97.0,93.0,23.0,80.0,65.0,34.0,46.0,74.0,7.0,3.0,97.0,87.0,36.0,37.0,51.0,75.0,72.0,43.0,52.0,32.0,69.0,47.0,16.0,22.0,78.0,68.0,70.0,79.0,78.0,78.0,52.0,51.0,97.0,21.0,34.0,2.0,66.0,3.0,87.0,16.0,97.0,99.0,49.0,17.0,6.0,96.0,43.0,79.0,44.0,51.0,13.0,47.0,32.0,14.0,85.0,65.0,38.0,46.0,53.0,34.0,94.0,60.0,12.0,60.0,13.0,96.0,16.0,13.0,34.0,58.0,71.0,11.0]
+          ("for i = 1 : 10; for j = 1 : 10; M(i, j) = input(); end; end;"
+            <> "for i = 1 : 10; disp(M(i, i)); end")]
 
 others :: Test
 others
-  = Number
-      False
-      (V.replicate 11 0
-        V.++ V.singleton 8
-        V.++ V.replicate 14 0
-        V.++ V.singleton 8
-        V.++ V.replicate 3 0)
-      6
-    ~=? updateVector
-      6
-      2
-      (Number False (V.singleton 8) 1)
-      (Number False (V.replicate 14 0 V.++ V.singleton 8) 3)
+  = TestList
+    [Number
+          False
+          (V.replicate 11 0
+            V.++ V.singleton 8
+            V.++ V.replicate 14 0
+            V.++ V.singleton 8
+            V.++ V.replicate 3 0)
+          6
+        ~=? updateVector
+          6
+          2
+          (Number False (V.singleton 8) 1)
+          (Number False (V.replicate 14 0 V.++ V.singleton 8) 3),
+      Number False (V.enumFromN 5 4) 4
+        ~=? getIndex
+          (V.enumFromN 1 4)
+          (V.singleton 2)
+          (Number False (V.enumFromN 1 8) 4),
+      Number False (V.singleton 5) 1
+        ~=? getIndex
+          (V.singleton 1)
+          (V.singleton 1)
+          (Number False (V.singleton 5) 1),
+      Number False (V.singleton 3) 1
+        ~=? updateVector
+          1
+          1
+          (Number False (V.singleton 3) 1)
+          (Number False V.empty 1)]
 
 loop :: Test
 loop

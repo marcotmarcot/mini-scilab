@@ -1,4 +1,4 @@
-module Scilab.Interpreter (interpret, Value (..), updateVector) where
+module Scilab.Interpreter (interpret, Value (..), updateVector, getIndex) where
 
 -- base
 import Control.Applicative ((<$>), (<*))
@@ -63,7 +63,7 @@ rvi var ixl ixc expr
     expr_@(Number typeNew _ _) <- eval expr
     let
       old
-        = M.findWithDefault (Number typeNew V.empty 0) var vars
+        = M.findWithDefault (Number typeNew V.empty 1) var vars
     modify
       $ first
       $ const
@@ -185,14 +185,25 @@ eval (ECall "strcat" [e])
   = String <$> V.singleton <$> T.concat <$> V.toList <$> getStrVec <$> eval e
 eval (ECall var [ix])
   = do
-    (Number typeVec v _) <- readVar var
+    var_ <- readVar var
     (Number typeIx ix_ _) <- eval ix
-    let
-      newv
-        = case typeIx of
-          False -> V.map ((v V.!) . pred . fromDouble) $ ix_
-          True -> V.map fst $ V.filter snd $ V.zip v $ V.map fromDouble ix_
-    return $ Number typeVec newv 1
+    return
+      $ case typeIx of
+        False -> getIndex (V.singleton 1) ix_ var_
+        True
+          -> getIndex
+            (V.singleton 1)
+            (V.map fst
+              $ V.filter snd
+              $ V.zip (V.enumFromN 1 $ V.length ix_)
+              $ V.map fromDouble ix_)
+            var_
+eval (ECall var [ixl, ixc])
+  = do
+    v <- readVar var
+    (Number False ixl_ 1) <- eval ixl
+    (Number False ixc_ 1) <- eval ixc
+    return $ getIndex ixl_ ixc_ v
 eval (ECall {}) = error "eval (ECall {})"
 eval (EVecFromTo from to)
   = do
@@ -205,6 +216,24 @@ eval (EVecFromToStep from step to)
     nstep <- evalScalarD step
     nto <- evalScalarD to
     return $ vec $ V.fromList [nfrom, (nfrom + nstep) .. nto]
+
+getIndex :: V.Vector Double -> V.Vector Double -> Value -> Value
+getIndex ixl ixc (Number typeVec v linesVec)
+  = Number typeVec newv (V.length ixl)
+    where
+      newv
+        = V.concat
+          $ V.toList
+          $ V.map
+            (\ixc_
+              -> V.map
+                 (\ixl_
+                   -> v
+                      V.! (pred (fromEnum ixc_) * linesVec
+                        + pred (fromEnum ixl_)))
+                 ixl)
+            ixc
+getIndex _ _ _ = error "getIndex _"
 
 showType :: Bool -> Double -> T.Text
 showType True 1 = "%t"
